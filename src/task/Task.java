@@ -1517,7 +1517,7 @@ public class Task {
 
         algorithm.setInputParameter("populationSize", spec.population);
         //algorithm.setInputParameter("maxEvaluations", spec.evaluations * (output.fitted.size() + graph.unknownParameters.size()));  // Maybe IQGraph should contain information about initial values that need to be fitted i.e. graph.unknownInitial and proper indexing should be done in ObjectiveProblem based on this info
-        double max_evals = spec.evaluations * (problem.getNumberOfVariables());
+        Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
         algorithm.setInputParameter("maxEvaluations", max_evals); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
 
         //System.out.println("Max_evals:" + max_evals);
@@ -1549,7 +1549,7 @@ public class Task {
 	    SolutionSet population = null;
         Variable[] variables = null;
         
-        if(max_evals > 0.0){
+        if(max_evals > 0){
         	population = algorithm.execute();
         	variables = population.get(0).getDecisionVariables();
         }
@@ -1604,7 +1604,7 @@ public class Task {
 
         Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
         
-        if(max_evals > 0.0)
+        if(max_evals > 0)
         	fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
         else
         	fitnessMeasures.put(objectiveFun.getName(), (simulations==null)? Double.POSITIVE_INFINITY : objectiveFun.evaluateTrajectory(simulations.get(0)));
@@ -1643,7 +1643,7 @@ public class Task {
         Operator selection; // Selection operator
 
         algorithm.setInputParameter("populationSize", spec.population);
-        double max_evals = spec.evaluations * (problem.getNumberOfVariables());
+        Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
         
         algorithm.setInputParameter("maxEvaluations", max_evals); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
         
@@ -1673,7 +1673,7 @@ public class Task {
         SolutionSet population = null;
         Variable[] variables = null;
         
-        if(max_evals > 0.0){
+        if(max_evals > 0){
         	population = algorithm.execute();
         	variables = population.get(0).getDecisionVariables();
         }
@@ -1737,7 +1737,7 @@ public class Task {
             
             Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
             
-            if(max_evals >0.0){
+            if(max_evals >0){
             	fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
             } else {
             	Double error = 0.0;
