@@ -1517,8 +1517,11 @@ public class Task {
 
         algorithm.setInputParameter("populationSize", spec.population);
         //algorithm.setInputParameter("maxEvaluations", spec.evaluations * (output.fitted.size() + graph.unknownParameters.size()));  // Maybe IQGraph should contain information about initial values that need to be fitted i.e. graph.unknownInitial and proper indexing should be done in ObjectiveProblem based on this info
-        algorithm.setInputParameter("maxEvaluations", spec.evaluations * (problem.getNumberOfVariables())); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
+        double max_evals = spec.evaluations * (problem.getNumberOfVariables());
+        algorithm.setInputParameter("maxEvaluations", max_evals); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
 
+        //System.out.println("Max_evals:" + max_evals);
+        
         // Crossover operator
         parameters = new HashMap<String, Object>();
         parameters.put("CR", spec.Cr);
@@ -1543,10 +1546,13 @@ public class Task {
 	    PseudoRandom.setRandomGenerator(msf);
 
 
-        SolutionSet population = algorithm.execute();
-
-
-        Variable[] variables = population.get(0).getDecisionVariables();
+	    SolutionSet population = null;
+        Variable[] variables = null;
+        
+        if(max_evals > 0.0){
+        	population = algorithm.execute();
+        	variables = population.get(0).getDecisionVariables();
+        }
 
         for (int i = 0; i < problem.initialIndexes.size(); i++) {
             int indexval = problem.initialIndexes.get(i).intValue();
@@ -1571,11 +1577,6 @@ public class Task {
 
         model.setOutputConstants(outputConsts);
 
-        Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
-        fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
-
-        model.setFitnessMeasures(fitnessMeasures);
-
 
         if (ts.settings.evaluation != null) {
 
@@ -1598,8 +1599,18 @@ public class Task {
             }
         }
         //Simulation
-        model.setSimulations(simulateModel(model, datasets));
+        List<Dataset> simulations = simulateModel(model, datasets);
+        model.setSimulations(simulations);
 
+        Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
+        
+        if(max_evals > 0.0)
+        	fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+        else
+        	fitnessMeasures.put(objectiveFun.getName(), (simulations==null)? Double.POSITIVE_INFINITY : objectiveFun.evaluateTrajectory(simulations.get(0)));
+
+        model.setFitnessMeasures(fitnessMeasures);
+        
         return model;
     }
 
@@ -1632,9 +1643,10 @@ public class Task {
         Operator selection; // Selection operator
 
         algorithm.setInputParameter("populationSize", spec.population);
-
-        algorithm.setInputParameter("maxEvaluations", spec.evaluations * (problem.getNumberOfVariables())); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
-
+        double max_evals = spec.evaluations * (problem.getNumberOfVariables());
+        
+        algorithm.setInputParameter("maxEvaluations", max_evals); // problem.getNumberOfVariables() contains the number of all variables that need: fitting initial + output + model parameters. no need to recalculate!
+        
         MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
     	msf.setSeed(spec.seed);
     	PseudoRandom.setRandomGenerator(msf);
@@ -1657,12 +1669,18 @@ public class Task {
 
 		/* Execute the Algorithm */
         //		long initTime = System.currentTimeMillis();
-        SolutionSet population = algorithm.execute();
-
+        
+        SolutionSet population = null;
+        Variable[] variables = null;
+        
+        if(max_evals > 0.0){
+        	population = algorithm.execute();
+        	variables = population.get(0).getDecisionVariables();
+        }
         //		long estimatedTime = System.currentTimeMillis() - initTime;
         //		System.out.println("Total execution time: " + estimatedTime);
 
-        Variable[] variables = population.get(0).getDecisionVariables();
+        
         int totalmodels = 1;
         if (problem.totalInitialToFit > problem.initialIndexes.size()) {
             totalmodels = datasets.size();
@@ -1693,11 +1711,6 @@ public class Task {
 
             emodel.setOutputConstants(outputConsts);
 
-            Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
-            fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
-
-            emodel.setFitnessMeasures(fitnessMeasures);
-
             if (ts.settings.evaluation != null) {
 
                 if (ts.settings.evaluation instanceof CrossValidSpec) {
@@ -1717,7 +1730,29 @@ public class Task {
 
                 }
             }
-            emodel.setSimulations(simulateModel(emodel, datasets));
+            
+            List<Dataset> simulations = simulateModel(emodel, datasets);
+            emodel.setSimulations(simulations);
+            
+            
+            Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
+            
+            if(max_evals >0.0){
+            	fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+            } else {
+            	Double error = 0.0;
+            	if(simulations == null){
+            		fitnessMeasures.put(objectiveFun.getName(), Double.POSITIVE_INFINITY);	
+            	} else {
+	            	for(int i=0; i<simulations.size(); i++){
+	            		error += objectiveFun.evaluateTrajectory(simulations.get(i), i); 
+	            	}
+	            	fitnessMeasures.put(objectiveFun.getName(), error);
+            	}
+            }
+            
+            emodel.setFitnessMeasures(fitnessMeasures);
+           
 
             lmodels.add(emodel);
         }
