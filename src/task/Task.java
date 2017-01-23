@@ -481,7 +481,7 @@ public class Task {
                 validate();
                 break;
             case SIMULATE:
-                simulateModel();
+                simulateModels();
                 break;
             case EVALUATE:
                 evaluateModels();
@@ -538,7 +538,7 @@ public class Task {
                 compileModel();
                 break;
             case SIMULATE_MODEL:
-                simulateModel();
+                simulateModels();
                 break;
             case FIT_MODEL:
                 fitModel();
@@ -570,7 +570,11 @@ public class Task {
 
         List<Dataset> outputData = simulateModel(testDatasets);
         for (int i = 0; i < testDatasets.size(); i++) {
-
+        	this.eval_out = new PrintStream(
+                    FileUtils.openOutputStream(new File(this.evaldir
+                            + "/" + model.getFullName()
+                            + "_datasetID_"+datasets.get(i).getId()+".eval"))
+            );
             TrajectoryObjectiveFunction objectiveFun = new RMSEMultiDataset(testDatasets, outsToCols);
             this.eval_out.println(outputData.get(i));
             this.eval_out.println("TEST ERROR " + objectiveFun.getName() + " = " + objectiveFun.evaluateTrajectory(outputData.get(i), i));
@@ -578,6 +582,25 @@ public class Task {
 
             this.eval_out.close();
         }
+
+    }
+    
+    private void simulateModels() throws InstantiationException, IllegalAccessException, ClassNotFoundException, FailedSimulationException, RecognitionException, IOException {
+
+        List<Dataset> outputData = simulateModel(datasets);
+        for (int i = 0; i < outputData.size(); i++) {
+        	
+            this.sim_out = new PrintStream(
+                    FileUtils.openOutputStream(new File(this.simdir
+                            + "/" + model.getFullName()
+                            + "_datasetID_"+datasets.get(i).getId()+".sim"))
+            );
+            sim_out.println(outputData.get(i));
+
+    
+        }
+        
+
 
     }
 
@@ -1033,7 +1056,7 @@ public class Task {
     }
 
 
-    private List<Dataset> simulateModel(List<Dataset> ODEdatasets)
+    private List<Dataset> simulateModel(List<Dataset> datasets)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException, FailedSimulationException, IOException {
 
 
@@ -1049,14 +1072,14 @@ public class Task {
             if (ts.settings != null) {
                 if (ts.settings.simulator instanceof CVODESpec) {
                     CVODESpec spec = (CVODESpec) ts.settings.simulator;
-                    for (int i = 0; i < ODEdatasets.size(); i++) {
+                    for (int i = 0; i < datasets.size(); i++) {
 
                         for (String name : model.allVars.keySet()) {
                             IV var = model.allVars.get(name);
                             if (ts.settings.initialvalues.usedatasetvalues) {
                                 String dsColName = endosToCols.get(name);
                                 if (dsColName != null) {
-                                    var.initial = ODEdatasets.get(i).getElem(0,
+                                    var.initial = datasets.get(i).getElem(0,
                                             dsColName);
                                     model.allVars.put(name, var);
                                 }
@@ -1066,7 +1089,7 @@ public class Task {
                         IQGraph graph = new IQGraph(model);
                         Output output = new Output(ts.output, graph);
 
-                        ODEModel odeModel = new ODEModel(graph, ODEdatasets,
+                        ODEModel odeModel = new ODEModel(graph, datasets,
                                 dimsToCols, exosToCols, i);
                         CVodeSimulator simulator = new CVodeSimulator(
                                 ODESolver.BDF, NonlinearSolver.NEWTON);
@@ -1078,7 +1101,7 @@ public class Task {
                         Dataset simulation = simulator.simulate();
 
                         OutputModel outputModel = new OutputModel(output,
-                                ODEdatasets, simulation, dimsToCols, exosToCols,
+                        		datasets, simulation, dimsToCols, exosToCols,
                                 outsToCols, i);
 
 
@@ -1096,26 +1119,31 @@ public class Task {
 
 
     }
-
-
-    private List<Dataset> simulateModel(ExtendedModel em, List<Dataset> ODEdatasets)
+    
+    private List<Dataset> simulateModel(ExtendedModel em, List<Dataset> datasets)
             throws InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException, FailedSimulationException, IOException {
 
 
-        Model model = em.getModel();
+    	  Model model = em.getModel();
+
+
+        //ArrayList <CVodeSimulator> simulators;
+        //ArrayList<ODEModel> odeModels;
         List<Dataset> outputDatas = new ArrayList<Dataset>();
+
         try {
+
             if (ts.settings != null) {
                 if (ts.settings.simulator instanceof CVODESpec) {
                     CVODESpec spec = (CVODESpec) ts.settings.simulator;
-                    for (int i = 0; i < ODEdatasets.size(); i++) {
+                    for (int i = 0; i < datasets.size(); i++) {
 
                         for (String name : model.allVars.keySet()) {
                             IV var = model.allVars.get(name);
-                            if (var.initial != null && ts.settings.initialvalues.usedatasetvalues) {
+                            if (ts.settings.initialvalues.usedatasetvalues) {
                                 String dsColName = endosToCols.get(name);
                                 if (dsColName != null) {
-                                    var.initial = ODEdatasets.get(i).getElem(0,
+                                    var.initial = datasets.get(i).getElem(0,
                                             dsColName);
                                     model.allVars.put(name, var);
                                 }
@@ -1125,7 +1153,7 @@ public class Task {
                         IQGraph graph = new IQGraph(model);
                         Output output = new Output(ts.output, graph);
 
-                        ODEModel odeModel = new ODEModel(graph, ODEdatasets,
+                        ODEModel odeModel = new ODEModel(graph, datasets,
                                 dimsToCols, exosToCols, i);
                         CVodeSimulator simulator = new CVodeSimulator(
                                 ODESolver.BDF, NonlinearSolver.NEWTON);
@@ -1137,14 +1165,14 @@ public class Task {
                         Dataset simulation = simulator.simulate();
 
                         OutputModel outputModel = new OutputModel(output,
-                                ODEdatasets, simulation, dimsToCols, exosToCols,
+                        		datasets, simulation, dimsToCols, exosToCols,
                                 outsToCols, i);
 
 
                         Double[] outputs = new Double[em.getOutputConstants().values().size()];
                         em.getOutputConstants().values().toArray(outputs);
                         outputModel.setOutputParameters(ArrayUtils.toPrimitive(outputs));
-
+                        
                         outputDatas.add(outputModel.compute());
 
 
@@ -1157,7 +1185,10 @@ public class Task {
             return null;
         }
 
+
     }
+
+
 
     private void fit()
             throws IOException, InterruptedException, ConfigurationException, RecognitionException, FailedSimulationException {
@@ -1265,6 +1296,8 @@ public class Task {
 
             List<ExtendedModel> lmodels = null;
             if (fit) {
+            	
+            if (datasets.size()>1){ //more than one ds
                 try {
                     flogger.info("Model #" + search.getCounter());
                     if (ts.settings.initialvalues.sameforalldatasets) {
@@ -1278,7 +1311,11 @@ public class Task {
                 } catch (FailedSimulationException ex) {
                     specificModel.setSuccessful(false);
                 }
-
+            }
+            else {
+            	   specificModel.setModelNo(search.getCounter());
+            	   fitSingleModel(dimsToCols, endosToCols, exosToCols, outsToCols, datasets, specificModel, ts.output, ts.settings.fitter, ts.settings.simulator, ts.settings.initialvalues);
+            }
             }
 
             if (lmodels == null) {

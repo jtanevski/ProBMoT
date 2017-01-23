@@ -42,10 +42,10 @@ public class CLITaskMain {
 			MDC.put("task", taskFilepath);
 
 			TaskSpec taskSpec = TaskSpec.unmarshal(taskFilepath);
-			Task task = new Task(taskSpec);
+			//Task task = new Task(taskSpec);
 			
 			taskSpec.taskPath=taskFilepath;
-			//Task task=null;
+			Task task=null;
 			
 			//taskSpec.BestModels=  new ArrayList<List<ExtendedModel>>();
 			
