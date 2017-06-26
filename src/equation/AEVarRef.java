@@ -3,7 +3,6 @@
  */
 package equation;
 
-import struct.*;
 import struct.inst.*;
 
 public class AEVarRef

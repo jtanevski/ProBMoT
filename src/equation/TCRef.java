@@ -3,11 +3,11 @@
  */
 package equation;
 
-import struct.*;
 import struct.temp.*;
 
 public class TCRef
 		extends PEAttrRef {
+	@SuppressWarnings("ucd")
 	transient TC cons;
 
 	public TCRef(TC cons) {

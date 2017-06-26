@@ -63,7 +63,7 @@ public class CLIMain {
 				Model incompleteModel = Traverse.addIncompleteModel(incompleteName);
 
 				ExtendedModel ext = new ExtendedModel(incompleteModel);
-				ModelEnumerator search = new ModelEnumerator(ext, null, null, null, null, false, null, null, null);
+				ModelEnumerator search = new ModelEnumerator(ext);
 
 				int counter = 0;
 				do {

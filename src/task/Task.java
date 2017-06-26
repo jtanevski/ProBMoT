@@ -5,7 +5,6 @@ import java.lang.management.ManagementFactory;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -20,10 +19,8 @@ import jmetal.util.*;
 
 import org.antlr.runtime.*;
 import org.apache.commons.configuration.*;
-import org.apache.commons.io.*;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
-import org.bridj.Pointer;
 import org.slf4j.*;
 import org.xml.sax.*;
 
@@ -37,10 +34,8 @@ import util.*;
 import xml.*;
 
 import com.google.common.collect.*;
-import com.google.common.io.Files;
-
 import fit.*;
-import fit.DASA_MSC.Method;
+//import fit.DASA_MSC.Method;
 import fit.compile.*;
 import fit.objective.*;
 
@@ -87,8 +82,8 @@ public class Task {
     BiMap<String, Integer> varIndex = HashBiMap.create(); // exoIndex + outIndex
     BiMap<String, Integer> weightsIndex = HashBiMap.create(); // Uncertainties
 
-    FitterOld fitterOld = ALG_MSC.ALG_MSC;
-    SimulatorOld simulatorOld = ALG_MSC.ALG_MSC;
+//    FitterOld fitterOld = ALG_MSC.ALG_MSC;
+//    SimulatorOld simulatorOld = ALG_MSC.ALG_MSC;
 
     //	Fitter fitter;
     //	Simulator simulator;
@@ -311,41 +306,6 @@ public class Task {
             this.out = System.out;
         }
 
-
-        if (ts.settings != null) {
-            if (ts.settings.fitter instanceof ALGSpec) {
-                ALGSpec spec = (ALGSpec) ts.settings.fitter;
-
-                this.fitterOld = ALG_MSC.ALG_MSC;
-                ALG_MSC.Params.DEFAULT_FIT.opt_fs_restarts = spec.restarts;
-                ALG_MSC.Params.DEFAULT_FIT.opt_normalize_error = (spec.normalize ? 1 : 0);
-            } else if (ts.settings.fitter instanceof DASASpec) {
-                DASASpec spec = (DASASpec) ts.settings.fitter;
-
-                this.fitterOld = DASA_MSC.DASA_MSC;
-                DASA_MSC.DASA_MSC.setMethod(Method.DASA);
-                DASA_MSC.DASA_MSC.setRestarts(spec.restarts);
-                DASA_MSC.DASA_MSC.setAnts(spec.ants);
-                DASA_MSC.DASA_MSC.setEvals(spec.evaluations);
-                DASA_MSC.DASA_MSC.setCauchyIncPer(spec.cauchyIncPer);
-                DASA_MSC.DASA_MSC.setCauchyDecPer(spec.cauchyDecPer);
-                DASA_MSC.DASA_MSC.setEvap(spec.evap);
-                DASA_MSC.Params.DEFAULT_FIT.opt_normalize_error = (spec.normalize ? 1 : 0);
-            } else if (ts.settings.fitter instanceof DESpecOld) {
-                DESpecOld spec = (DESpecOld) ts.settings.fitter;
-
-                this.fitterOld = DASA_MSC.DASA_MSC;
-                DASA_MSC.DASA_MSC.setMethod(Method.DE);
-                DASA_MSC.DASA_MSC.setRestarts(spec.restarts);
-                DASA_MSC.DASA_MSC.setPopulation(spec.population);
-                DASA_MSC.DASA_MSC.setEvals(spec.evaluations);
-                DASA_MSC.DASA_MSC.setF(spec.F);
-                DASA_MSC.DASA_MSC.setCr(spec.Cr);
-                DASA_MSC.DASA_MSC.setStrategy(spec.strategy);
-                DASA_MSC.Params.DEFAULT_FIT.opt_normalize_error = (spec.normalize ? 1 : 0);
-            }
-        }
-
         if (ts.command == null) {
             throw new ParsingException(String.format(Errors.ERRORS[69]));
         }
@@ -486,18 +446,18 @@ public class Task {
             case EVALUATE:
                 evaluateModels();
                 break;
-            case FIT:
-                fit();
-                break;
+//            case FIT:
+//                fit();
+//                break;
             case WRITE_EQ:
                 writeEQ();
                 break;
             case DUPLICATE:
                 duplicate();
                 break;
-            case FIT_EACH:
-                fitCombinations();
-                break;
+//            case FIT_EACH:
+//                fitCombinations();
+//                break;
             case EXHAUSTIVE_SEARCH:
                 enumerateModel(true);
                 break;
@@ -507,9 +467,9 @@ public class Task {
             case ENUMERATE_C:
                 enumerateModel(false, "c");
                 break;
-            case PROCESS_LIST:
-                enumerateProcessList();
-                break;
+//            case PROCESS_LIST:
+//                enumerateProcessList();
+//                break;
             case COUNT:
                 count();
                 break;
@@ -525,9 +485,9 @@ public class Task {
             case MAT_TREE:
                 toMatTree();
                 break;
-            case MSC:
-                writeMSC();
-                break;
+//            case MSC:
+//                writeMSC();
+//                break;
             case XML:
                 writeXML();
                 break;
@@ -691,7 +651,7 @@ public class Task {
         //	BufferedWriter rexp = new BufferedWriter(new FileWriter(new File(outputdir + "runexperiments.sh")));
         //	rexp.write("#!/bin/sh \n");
 
-        ModelEnumerator search = new ModelEnumerator(ext, null, null, null, null, false, null, null, null);
+        ModelEnumerator search = new ModelEnumerator(ext);
         do {
 
             //change model name, change output done
@@ -839,28 +799,30 @@ public class Task {
 
     }
 
-    private void simulate()
-            throws IOException, InterruptedException, RecognitionException, FailedSimulationException {
-        Model model; // model to be simulated
-        if (this.model != null) {
-            model = this.model;
-        } else if (this.incompleteModel != null) {
-            logger.info("Model not provided. Using incomplete model instead");
-            model = this.incompleteModel;
-        } else {
-            throw new RuntimeException("Cannot perform simulation because no model was provided. Use <model> tag to specify one");
-        }
-
-        simulatorOld.initWorkDir();
-
-        IQGraph graph = new IQGraph(model);
-        Output output = new Output(this.ts.output, graph);
-
-        Simulation simulation = simulatorOld.simulate(output, this.datasets, this.timeColumn, this.varIndex, this.weightsIndex);
-        simulation.writeSimulation(this.out);
-
-
-    }
+//TODO: Remove code
+//method uses old simulator
+//    private void simulate()
+//            throws IOException, InterruptedException, RecognitionException, FailedSimulationException {
+//        Model model; // model to be simulated
+//        if (this.model != null) {
+//            model = this.model;
+//        } else if (this.incompleteModel != null) {
+//            logger.info("Model not provided. Using incomplete model instead");
+//            model = this.incompleteModel;
+//        } else {
+//            throw new RuntimeException("Cannot perform simulation because no model was provided. Use <model> tag to specify one");
+//        }
+//
+//        simulatorOld.initWorkDir();
+//
+//        IQGraph graph = new IQGraph(model);
+//        Output output = new Output(this.ts.output, graph);
+//
+//        Simulation simulation = simulatorOld.simulate(output, this.datasets, this.timeColumn, this.varIndex, this.weightsIndex);
+//        simulation.writeSimulation(this.out);
+//
+//
+//    }
 
 
     private void simulateModel(ExtendedModel eModel, int ndata, int modelNo)
@@ -1188,31 +1150,32 @@ public class Task {
 
     }
 
+//TODO: Remove code
+//method uses old fitter
 
-
-    private void fit()
-            throws IOException, InterruptedException, ConfigurationException, RecognitionException, FailedSimulationException {
-        if (this.incompleteModel == null) {
-            throw new RuntimeException("Cannot perform fitting because an incomplete model was not provided. Use the <incomplete> tag to specify one");
-        }
-        String filename = (ts.filename != null) ? ts.filename : "default";
-        int counter = 1;
-        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
-            counter++;
-        }
-        String logDirpath = logDir + "/" + filename + "-" + counter;
-
-        fitterOld.initWorkDir();
-
-        IQGraph graph = new IQGraph(this.incompleteModel);
-        Output output = new Output(this.ts.output, graph);
-
-        ExtendedModel completedModel =
-                fitterOld.fit(output, this.datasets, this.ts.mappings.dimensions.get(0).col, this.varIndex, this.weightsIndex, logDirpath);
-        this.out.print(completedModel);
-
-
-    }
+//    private void fit()
+//            throws IOException, InterruptedException, ConfigurationException, RecognitionException, FailedSimulationException {
+//        if (this.incompleteModel == null) {
+//            throw new RuntimeException("Cannot perform fitting because an incomplete model was not provided. Use the <incomplete> tag to specify one");
+//        }
+//        String filename = (ts.filename != null) ? ts.filename : "default";
+//        int counter = 1;
+//        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
+//            counter++;
+//        }
+//        String logDirpath = logDir + "/" + filename + "-" + counter;
+//
+//        fitterOld.initWorkDir();
+//
+//        IQGraph graph = new IQGraph(this.incompleteModel);
+//        Output output = new Output(this.ts.output, graph);
+//
+//        ExtendedModel completedModel =
+//                fitterOld.fit(output, this.datasets, this.ts.mappings.dimensions.get(0).col, this.varIndex, this.weightsIndex, logDirpath);
+//        this.out.print(completedModel);
+//
+//
+//    }
 
     private void fitModel()
             throws JMException, RecognitionException, ClassNotFoundException, InstantiationException, IllegalAccessException, IOException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
@@ -1222,44 +1185,47 @@ public class Task {
         this.out.print(fittedModel);
     }
 
-    private void enumerate(boolean fit, String... format)
-            throws IOException, InterruptedException, ConfigurationException, RecognitionException {
-        if (this.incompleteModel == null) {
-            throw new RuntimeException("Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
-        }
-
-        String filename = (ts.filename != null) ? ts.filename : "default";
-        int counter = 1;
-        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
-            counter++;
-        }
-        String logDirpath = logDir + "/" + filename + "-" + counter;
-
-        fitterOld.initWorkDir();
-
-        ExtendedModel ext = new ExtendedModel(incompleteModel);
-        String timeCol;
-        if (this.ts.mappings != null) {
-            timeCol = this.ts.mappings.dimensions.get(0).col;
-        } else {
-            timeCol = null;
-        }
-
-        ModelEnumerator search =
-                new ModelEnumerator(ext, this.datasets, timeCol, this.varIndex, this.weightsIndex, fit, fitterOld, logDirpath, ts.output);
-        do {
-            ExtendedModel fittedModel = search.nextModel();
-            out.println("// Model #" + search.getCounter());
-            if (format.length == 1 && format[0].equals("c")) {
-                out.println(SimpleWriter.serialize(fittedModel.getModel(), new CSerializer()));
-            } else {
-                out.println(fittedModel);
-            }
-            logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
-        } while (search.hasNextModel());
-
-        //fitter.deleteWorkDir();
-    }
+//TODO: Remove code
+// method uses old fitter
+    
+//    private void enumerate(boolean fit, String... format)
+//            throws IOException, InterruptedException, ConfigurationException, RecognitionException {
+//        if (this.incompleteModel == null) {
+//            throw new RuntimeException("Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
+//        }
+//
+//        String filename = (ts.filename != null) ? ts.filename : "default";
+//        int counter = 1;
+//        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
+//            counter++;
+//        }
+//        String logDirpath = logDir + "/" + filename + "-" + counter;
+//
+//        fitterOld.initWorkDir();
+//
+//        ExtendedModel ext = new ExtendedModel(incompleteModel);
+//        String timeCol;
+//        if (this.ts.mappings != null) {
+//            timeCol = this.ts.mappings.dimensions.get(0).col;
+//        } else {
+//            timeCol = null;
+//        }
+//
+//        ModelEnumerator search =
+//                new ModelEnumerator(ext, this.datasets, timeCol, this.varIndex, this.weightsIndex, fit, fitterOld, logDirpath, ts.output);
+//        do {
+//            ExtendedModel fittedModel = search.nextModel();
+//            out.println("// Model #" + search.getCounter());
+//            if (format.length == 1 && format[0].equals("c")) {
+//                out.println(SimpleWriter.serialize(fittedModel.getModel(), new CSerializer()));
+//            } else {
+//                out.println(fittedModel);
+//            }
+//            logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
+//        } while (search.hasNextModel());
+//
+//        //fitter.deleteWorkDir();
+//    }
 
     private void enumerateModel(boolean fit, String... format)
             throws IOException, InterruptedException, ConfigurationException, RecognitionException, JMException, ClassNotFoundException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, SecurityException {
@@ -1290,10 +1256,10 @@ public class Task {
 			if (!sdir.isDirectory()) { sdir.mkdir(); }*/
         }
 
-        ModelEnumerator search = new ModelEnumerator(ext, null, null, null, null, false, null, null, null);
+        ModelEnumerator search = new ModelEnumerator(ext);
         do {
             ExtendedModel specificModel = search.nextModel();
-
+            
             List<ExtendedModel> lmodels = null;
             if (fit) {
             	
@@ -1324,28 +1290,28 @@ public class Task {
                     out.println(SimpleWriter.serialize(specificModel.getModel(), new CSerializer()));
                 } else {
                     out.println(specificModel);
-                    if (fit) {
-                        this.sim_out = new PrintStream(
-                                FileUtils.openOutputStream(new File(this.simdir
-                                        + "/Model#" + specificModel.getModelNo()
-                                        + ".sim"))
-                        );
-                        for (int i = 0; i < datasets.size(); i++) {
-                            this.sim_out.println("DATASET_ID:"
-                                    + datasets.get(i).getId());
-                            try {
-                                this.sim_out.println(specificModel
-                                        .getSimulations().get(i));
-                            } catch (NullPointerException e) {
-                                this.sim_out.println("FAILED SIMULATION");
-                            }
-                        }
-                    }
+//                    if (fit) {
+//                        this.sim_out = new PrintStream(
+//                                FileUtils.openOutputStream(new File(this.simdir
+//                                        + "/Model#" + specificModel.getModelNo()
+//                                        + ".sim"))
+//                        );
+//                        for (int i = 0; i < datasets.size(); i++) {
+//                            this.sim_out.println("DATASET_ID:"
+//                                    + datasets.get(i).getId());
+//                            try {
+//                                this.sim_out.println(specificModel
+//                                        .getSimulations().get(i));
+//                            } catch (NullPointerException e) {
+//                                this.sim_out.println("FAILED SIMULATION");
+//                            }
+//                        }
+//                    }
                 }
             } else {
 
-                this.sim_out = new PrintStream(FileUtils.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo()
-                        + ".sim")));
+//                this.sim_out = new PrintStream(FileUtils.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo()
+//                        + ".sim")));
                 for (int i = 0; i < datasets.size(); i++) {
                     out.println("// Model #" + search.getCounter() + " for dataset " + datasets.get(i).getFilepath());
                     ExtendedModel eModel = lmodels.get(i);
@@ -1353,19 +1319,19 @@ public class Task {
                         out.println(SimpleWriter.serialize(eModel.getModel(), new CSerializer()));
                     } else {
                         out.println(eModel);
-                        if (fit) {
-
-                            this.sim_out.println("DATASET_ID:"
-                                    + datasets.get(i).getId());
-                            try {
-                                this.sim_out.println(eModel
-                                        .getSimulations().get(i));
-                            } catch (NullPointerException e) {
-                                this.sim_out.println("FAILED SIMULATION");
-                            }
-
-
-                        }
+//                        if (fit) {
+//
+//                            this.sim_out.println("DATASET_ID:"
+//                                    + datasets.get(i).getId());
+//                            try {
+//                                this.sim_out.println(eModel
+//                                        .getSimulations().get(i));
+//                            } catch (NullPointerException e) {
+//                                this.sim_out.println("FAILED SIMULATION");
+//                            }
+//
+//
+//                        }
                     }
                 }
             }
@@ -1797,15 +1763,17 @@ public class Task {
         return lmodels;
     }
 
-
-    private void writeMSC()
-            throws FileNotFoundException, RecognitionException {
-
-        IQGraph graph = new IQGraph(this.incompleteModel);
-        Output output = new Output(this.ts.output, graph);
-
-        fitterOld.generateMSCFile(output, this.datasets, this.ts.mappings.dimensions.get(0).col, this.varIndex, this.weightsIndex, ts.outputFilepath);
-    }
+//TODO: Remove code
+// uses old fitter
+    
+//    private void writeMSC()
+//            throws FileNotFoundException, RecognitionException {
+//
+//        IQGraph graph = new IQGraph(this.incompleteModel);
+//        Output output = new Output(this.ts.output, graph);
+//
+//        fitterOld.generateMSCFile(output, this.datasets, this.ts.mappings.dimensions.get(0).col, this.varIndex, this.weightsIndex, ts.outputFilepath);
+//    }
 
     private void writeXML()
             throws JAXBException, SAXException {
@@ -1866,33 +1834,37 @@ public class Task {
         // logger.info("Written equations in C-format to '" + ts.outputFilepath + "'");
     }
 
-    private void fitCombinations()
-            throws IOException {
-        if (this.incompleteModel == null) {
-            throw new RuntimeException("Cannot perform fitting because incomplete model was not provided. Use <incomplete> tag to specify one");
-        }
-        IQGraph graph = new IQGraph(incompleteModel);
-
-        String baseFilename = ALG_MSC.ALG_MSC.tempDirpath + File.separator + "params" + File.separator + "params";
-        String extension = ".out";
-        int counter = 0;
-        String[] logFilenames = new String[graph.diffParameters.size()];
-
-        for (String icName : graph.diffParameters.keySet()) {
-            // Model copied = incompleteModel.copy();
-            // IIC cons = (IIC) copied.allConsts.get(icName);
-            // cons.value = null;
-            //
-            logFilenames[counter] = baseFilename + counter + extension;
-            // Model completedModel = CVODE.CVODE.fit(copied, this.datasets, this.ts.timeColumn, varIndex, logFilenames[counter]);
-            //
-            counter++;
-        }
-
-        String outputLog = ALG_MSC.ALG_MSC.tempDirpath + File.separator + "params" + File.separator + "merged.out";
-
-        ALG_MSC.mergeAllParametersLogs(outputLog, logFilenames);
-    }
+    
+//TODO: Remove code
+// Uses old fitter
+    
+//    private void fitCombinations()
+//            throws IOException {
+//        if (this.incompleteModel == null) {
+//            throw new RuntimeException("Cannot perform fitting because incomplete model was not provided. Use <incomplete> tag to specify one");
+//        }
+//        IQGraph graph = new IQGraph(incompleteModel);
+//
+//        String baseFilename = ALG_MSC.ALG_MSC.tempDirpath + File.separator + "params" + File.separator + "params";
+//        String extension = ".out";
+//        int counter = 0;
+//        String[] logFilenames = new String[graph.diffParameters.size()];
+//
+//        for (String icName : graph.diffParameters.keySet()) {
+//            // Model copied = incompleteModel.copy();
+//            // IIC cons = (IIC) copied.allConsts.get(icName);
+//            // cons.value = null;
+//            //
+//            logFilenames[counter] = baseFilename + counter + extension;
+//            // Model completedModel = CVODE.CVODE.fit(copied, this.datasets, this.ts.timeColumn, varIndex, logFilenames[counter]);
+//            //
+//            counter++;
+//        }
+//
+//        String outputLog = ALG_MSC.ALG_MSC.tempDirpath + File.separator + "params" + File.separator + "merged.out";
+//
+//        ALG_MSC.mergeAllParametersLogs(outputLog, logFilenames);
+//    }
 
     // Print Best Models
     private void PrintBestModels() {
@@ -1971,43 +1943,46 @@ public class Task {
 
     }
 
-    private void enumerateProcessList()
-            throws IOException, InterruptedException, ConfigurationException, RecognitionException {
-        if (this.incompleteModel == null) {
-            throw new RuntimeException("Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
-        }
-
-        String filename = (ts.filename != null) ? ts.filename : "default";
-        int counter = 1;
-        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
-            counter++;
-        }
-        String logDirpath = logDir + "/" + filename + "-" + counter;
-
-        fitterOld.initWorkDir();
-
-        ExtendedModel ext = new ExtendedModel(incompleteModel);
-        String timeCol;
-        if (this.ts.mappings != null) {
-            timeCol = this.ts.mappings.dimensions.get(0).col;
-        } else {
-            timeCol = null;
-        }
-
-        ModelEnumerator search = new ModelEnumerator(ext, null, null, null, null, false, null, null, null);
-
-        ExtendedModel fittedModel = search.nextModel();
-        out.println(fittedModel.getModel().toProcessList());
-        logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
-
-        while (search.hasNextModel()) {
-            fittedModel = search.nextModel();
-            out.println(fittedModel.getModel().toProcessList());
-            logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
-        }
-
-        //fitter.deleteWorkDir();
-    }
+    //TODO: Remove code
+    // uses old fitter
+    
+//    private void enumerateProcessList()
+//            throws IOException, InterruptedException, ConfigurationException, RecognitionException {
+//        if (this.incompleteModel == null) {
+//            throw new RuntimeException("Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
+//        }
+//
+//        String filename = (ts.filename != null) ? ts.filename : "default";
+//        int counter = 1;
+//        while (new File(logDir + "/" + filename + "-" + counter).exists()) {
+//            counter++;
+//        }
+//        String logDirpath = logDir + "/" + filename + "-" + counter;
+//
+//        fitterOld.initWorkDir();
+//
+//        ExtendedModel ext = new ExtendedModel(incompleteModel);
+//        String timeCol;
+//        if (this.ts.mappings != null) {
+//            timeCol = this.ts.mappings.dimensions.get(0).col;
+//        } else {
+//            timeCol = null;
+//        }
+//
+//        ModelEnumerator search = new ModelEnumerator(ext, null, null, null, null, false, null, null, null);
+//
+//        ExtendedModel fittedModel = search.nextModel();
+//        out.println(fittedModel.getModel().toProcessList());
+//        logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
+//
+//        while (search.hasNextModel()) {
+//            fittedModel = search.nextModel();
+//            out.println(fittedModel.getModel().toProcessList());
+//            logger.info("Model #" + search.getCounter() + (fittedModel.isSuccessful() ? "" : " failed"));
+//        }
+//
+//        //fitter.deleteWorkDir();
+//    }
 
     private void count()
             throws IOException, ConfigurationException, InterruptedException, RecognitionException {
@@ -2023,7 +1998,7 @@ public class Task {
         String logDirpath = logDir + "/" + filename + "-" + counter;
 
         ExtendedModel ext = new ExtendedModel(incompleteModel);
-        ModelEnumerator search = new ModelEnumerator(ext, this.datasets, null, null, null, false, null, null, null);
+        ModelEnumerator search = new ModelEnumerator(ext);
 
         int modelNum = search.count();
 

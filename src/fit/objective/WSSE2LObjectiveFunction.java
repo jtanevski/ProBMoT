@@ -1,7 +1,5 @@
 package fit.objective;
 
-import java.util.Map.Entry;
-
 import com.google.common.collect.*;
 
 import temp.*;

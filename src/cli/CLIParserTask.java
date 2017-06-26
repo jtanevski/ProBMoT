@@ -3,7 +3,6 @@ package cli;
 
 
 import com.martiansoftware.jsap.*;
-import com.martiansoftware.jsap.stringparsers.*;
 
 /**
  * A parser for the command line arguments.

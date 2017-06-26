@@ -4,8 +4,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang3.ArrayUtils;
-
 import com.google.common.collect.*;
 
 import fit.compile.*;
@@ -37,7 +35,7 @@ public class OutputModel {
 
 	private double[] outputs;
 	
-	int ndata;
+	private int ndata;
 
 	public OutputModel(Output output, List<Dataset> datasets, Dataset simulation, BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols, BiMap<String, String> outsToCols, int... ndataset)
 			throws InstantiationException, IllegalAccessException, ClassNotFoundException, IOException {

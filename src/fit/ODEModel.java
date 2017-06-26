@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.Map.Entry;
 
-import org.apache.commons.lang.*;
 import org.bridj.*;
 
 import com.google.common.collect.*;
@@ -25,15 +24,15 @@ import util.*;
  * 
  */
 public class ODEModel extends CvodeLibrary.CVRhsFn {
-	public long tc1;
-	public long tc2;
-	public long tc3;
-	public long tc4;
-	public long tc5;
-	public long tc6;
-	public long tc7;
+	private long tc1;
+	private long tc2;
+	private long tc3;
+	private long tc4;
+	private long tc5;
+	private long tc6;
+	private long tc7;
 
-	public long tc;
+	private long tc;
 
 	// Mappings
 
@@ -60,23 +59,23 @@ public class ODEModel extends CvodeLibrary.CVRhsFn {
 
 	// data sets and mappings to get values for exogenous variables
 	private List<Dataset> datasets;
-	BiMap<String, String> dimsToCols;
-	BiMap<String, String> exosToCols;
+	private BiMap<String, String> dimsToCols;
+	private BiMap<String, String> exosToCols;
 
 	private double[] timeCol;
-	String timeName;
+	private String timeName;
 
-	Pointer<_generic_N_Vector> yVector;
+	private Pointer<_generic_N_Vector> yVector;
 	public Pointer<Double> yVectorData;
 
-	boolean isFirst = true;
-	Pointer<Double> ydotData;
+	private boolean isFirst = true;
+	private Pointer<Double> ydotData;
 
 	/** The size of the ODE model in terms of number of equations **/
 	private int problemSize;
 	private ODEFunction ode;
 
-	int ndata;
+	private int ndata;
 
 	public ODEModel(IQGraph graph, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols,

@@ -14,7 +14,6 @@ import struct.*;
 import struct.inst.*;
 import temp.*;
 import temp.IQGraph.Type;
-import util.*;
 
 public class ModelCompiler {
 	//	public static Model model;

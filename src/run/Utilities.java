@@ -49,18 +49,21 @@ public class Utilities {
 		}
 	}
 
-	public static void mergeLogs()
-			throws Exception {
-		String tempDirpath = "temp";
-		String pre = tempDirpath + File.separatorChar;
-
-		String outputLog = "merged.out";
-
-		String input1 = "params1.out";
-		String input2 = "params.out";
-
-		ALG_MSC.mergeFittedParametersLogs(pre + outputLog, pre + input1, pre + input2);
-	}
+	//TODO: Remove code
+	// code not used
+	
+//	public static void mergeLogs()
+//			throws Exception {
+//		String tempDirpath = "temp";
+//		String pre = tempDirpath + File.separatorChar;
+//
+//		String outputLog = "merged.out";
+//
+//		String input1 = "params1.out";
+//		String input2 = "params.out";
+//
+//		ALG_MSC.mergeFittedParametersLogs(pre + outputLog, pre + input1, pre + input2);
+//	}
 
 	public static void mergeRestarts()
 			throws IOException {

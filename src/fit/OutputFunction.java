@@ -1,7 +1,5 @@
 package fit;
 
-import util.*;
-
 public interface OutputFunction {
 	/**
 	 *Computes the final output of the model including all algebraic and output equations

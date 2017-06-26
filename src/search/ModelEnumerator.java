@@ -19,10 +19,10 @@ public class ModelEnumerator {
 
 	ExtendedModel extendedModel;
 
-	List<Dataset> datasets;
-	String timeColumn;
-	Map<String, Integer> varIndex;
-	Map<String, Integer> uncIndex;
+	//List<Dataset> datasets;
+	//String timeColumn;
+	//Map<String, Integer> varIndex;
+	//Map<String, Integer> uncIndex;
 
 
 	ModelRefiner refiner;
@@ -34,27 +34,29 @@ public class ModelEnumerator {
 	ComponentProcessRefiner processRefiner;
 	ExtendedModel completeModel;
 
-	private boolean fit;
-	private FitterOld fitter;
-	private String logDirpath;
+	//private boolean fit;
+	//private FitterOld fitter;
+	//private String logDirpath;
 
-	private OutputSpec outputSpec;
+	//private OutputSpec outputSpec;
 
 	private int counter;
 
-	public ModelEnumerator(ExtendedModel extendedModel, List<Dataset> datasets, String timeColumn, Map<String, Integer> varIndex, Map<String, Integer> uncIndex, boolean fit, FitterOld fitter, String logDirpath, OutputSpec outputSpec) {
+	//public ModelEnumerator(ExtendedModel extendedModel, List<Dataset> datasets, String timeColumn, Map<String, Integer> varIndex, Map<String, Integer> uncIndex, boolean fit, FitterOld fitter, String logDirpath, OutputSpec outputSpec) {
+	//Change signature due to use of old fitter
+    public ModelEnumerator(ExtendedModel extendedModel) {
 		this.extendedModel = extendedModel;
+//
+//		this.datasets = datasets;
+//		this.timeColumn = timeColumn;
+//		this.varIndex = varIndex;
+//		this.uncIndex = uncIndex;
+		//this.fit = fit;
+		//this.fitter = fitter;
 
-		this.datasets = datasets;
-		this.timeColumn = timeColumn;
-		this.varIndex = varIndex;
-		this.uncIndex = uncIndex;
-		this.fit = fit;
-		this.fitter = fitter;
+		//this.logDirpath = logDirpath;
 
-		this.logDirpath = logDirpath;
-
-		this.outputSpec = outputSpec;
+		//this.outputSpec = outputSpec;
 
 		refiner = new ModelRefiner(extendedModel);
 		refinedModel = refiner.nextModel();
@@ -101,17 +103,21 @@ public class ModelEnumerator {
 
 		counter++;
 		ExtendedModel toReturn;
-		if (this.fit) {
-			try {
-				Output output = new Output(outputSpec, new IQGraph(completeModel.getModel()));
-				toReturn = fitter.fit(output, this.datasets, this.timeColumn, this.varIndex, this.uncIndex, logDirpath + "/model-" + counter);
-			} catch (FailedSimulationException ex) {
-				toReturn = this.completeModel;
-				toReturn.setSuccessful(false);
-			}
-		} else {
+		
+//TODO: Remove code
+//uses old fitter
+		
+//		if (this.fit) {
+//			try {
+//				Output output = new Output(outputSpec, new IQGraph(completeModel.getModel()));
+//				toReturn = fitter.fit(output, this.datasets, this.timeColumn, this.varIndex, this.uncIndex, logDirpath + "/model-" + counter);
+//			} catch (FailedSimulationException ex) {
+//				toReturn = this.completeModel;
+//				toReturn.setSuccessful(false);
+//			}
+//		} else {
 			toReturn = this.completeModel;
-		}
+//		}
 
 		return toReturn;
 	}

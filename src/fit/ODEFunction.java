@@ -1,7 +1,5 @@
 package fit;
 
-import util.*;
-
 public interface ODEFunction {
 	/**
 	 *

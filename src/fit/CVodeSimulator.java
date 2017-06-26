@@ -4,11 +4,6 @@ import java.io.*;
 
 import org.apache.commons.lang.*;
 import org.bridj.*;
-import org.bridj.Pointer.Releaser;
-import org.bridj.cpp.CPPRuntime;
-import org.slf4j.*;
-
-import run.*;
 import temp.*;
 import util.*;
 import static fit.jvode.bridj.cvode.CvodeLibrary.*;
@@ -41,7 +36,8 @@ public class CVodeSimulator {
 		return libpath;
 	}
 
-	public static final Logger logger = LoggerFactory.getLogger(CLITaskMain.class);
+// TODO Remove unused code found by UCDetector
+// 	public static final Logger logger = LoggerFactory.getLogger(CLITaskMain.class);
 
 	private ODESolver odeSolver;
 	private NonlinearSolver nonlinearSolver;
@@ -113,12 +109,13 @@ public class CVodeSimulator {
 		}
 	}
 	
-	public void free(){
-		//TODO: free memory
-		
-		
-		
-	}
+// TODO Remove unused code found by UCDetector
+// 	public void free(){
+// 		//TODO: free memory
+// 		
+// 		
+// 		
+// 	}
 
 	public Dataset simulate() throws FailedSimulationException {
 		double[] time = odeModel.getTimeCol();

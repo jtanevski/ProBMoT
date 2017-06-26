@@ -1,7 +1,5 @@
 package fit.objective;
 
-import java.util.*;
-
 import temp.*;
 
 import com.google.common.collect.*;

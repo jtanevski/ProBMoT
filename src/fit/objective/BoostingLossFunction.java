@@ -1,7 +1,5 @@
 package fit.objective;
 
-import java.util.List;
-
 public class BoostingLossFunction {
 	
 	protected Double[] measured;
