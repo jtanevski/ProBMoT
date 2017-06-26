@@ -12,7 +12,5 @@ public class InitialValuesSpec {
 	
 	@XmlElement(defaultValue = "false")
 	public boolean evaluatewithdatasetvalues;
-	
-
 
 }

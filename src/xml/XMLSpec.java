@@ -6,19 +6,15 @@ import java.util.*;
 
 import javax.xml.bind.*;
 import javax.xml.bind.annotation.*;
-import javax.xml.transform.stream.*;
-import javax.xml.validation.*;
+
 
 import org.antlr.runtime.*;
-import org.apache.commons.lang.*;
 import org.slf4j.*;
-import org.w3c.dom.Element;
 import org.xml.sax.*;
 
 import serialize.*;
 import struct.inst.*;
 import struct.temp.*;
-import task.*;
 import temp.*;
 import traverse.*;
 
@@ -28,7 +24,7 @@ import traverse.*;
 public class XMLSpec {
 	public static final Logger logger = LoggerFactory.getLogger(XMLSpec.class);
 
-	public static final Class[] classes = {XMLSpec.class, FitterSpec.class, ALGSpec.class, DASASpec.class, DESpecOld.class};
+	public static final Class[] classes = {XMLSpec.class, FitterSpec.class, DESpec.class};
 
 	@XmlElement
 	Settings settings;

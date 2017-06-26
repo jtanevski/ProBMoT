@@ -473,18 +473,18 @@ public class Task {
             case COUNT:
                 count();
                 break;
-            case DOT_ALL:
-                toDot(DotFlag.ALL);
-                break;
-            case DOT_PROPER:
-                toDot(DotFlag.PROPER);
-                break;
-            case DOT_NAMES:
-                toDot(DotFlag.NAME);
-                break;
-            case MAT_TREE:
-                toMatTree();
-                break;
+//            case DOT_ALL:
+//                toDot(DotFlag.ALL);
+//                break;
+//            case DOT_PROPER:
+//                toDot(DotFlag.PROPER);
+//                break;
+//            case DOT_NAMES:
+//                toDot(DotFlag.NAME);
+//                break;
+//            case MAT_TREE:
+//                toMatTree();
+//                break;
 //            case MSC:
 //                writeMSC();
 //                break;
@@ -2005,31 +2005,37 @@ public class Task {
         out.println(modelNum + " models generated");
     }
 
-    private void toDot(DotFlag flag)
-            throws FileNotFoundException {
-        Visualizer.toDotFile(library, flag, false, ts.outputFilepath + "/DotFile.out");
-    }
+    
+    //TODO: Remove code
+    //dot format is not used anymore
+//    private void toDot(DotFlag flag)
+//            throws FileNotFoundException {
+//        Visualizer.toDotFile(library, flag, false, ts.outputFilepath + "/DotFile.out");
+//    }
 
-    private void toMatTree()
-            throws FileNotFoundException {
-
-        StringBuilder libTree = new StringBuilder();
-
-        libTree.append("{");
-
-        for (TP tp : library.tps.values()) {
-            for (TP subTP : tp.subs.values()) {
-                libTree.append("\"" + tp.id + "\" -> \"" + subTP.id + "\", ");
-            }
-        }
-        libTree.delete(libTree.length() - 2, libTree.length() - 1);
-        libTree.append("}");
-
-        PrintStream out = new PrintStream(ts.outputFilepath + "/Math_tree.out");
-        out.print(libTree.toString());
-        out.close();
-
-    }
+    
+    //TODO: Remove code
+    //mat tree not used anymore
+//    private void toMatTree()
+//            throws FileNotFoundException {
+//
+//        StringBuilder libTree = new StringBuilder();
+//
+//        libTree.append("{");
+//
+//        for (TP tp : library.tps.values()) {
+//            for (TP subTP : tp.subs.values()) {
+//                libTree.append("\"" + tp.id + "\" -> \"" + subTP.id + "\", ");
+//            }
+//        }
+//        libTree.delete(libTree.length() - 2, libTree.length() - 1);
+//        libTree.append("}");
+//
+//        PrintStream out = new PrintStream(ts.outputFilepath + "/Math_tree.out");
+//        out.print(libTree.toString());
+//        out.close();
+//
+//    }
 
     private void createOutput()
             throws RecognitionException, InstantiationException, IllegalAccessException, ClassNotFoundException {

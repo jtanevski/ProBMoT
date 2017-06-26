@@ -5,12 +5,8 @@ import java.util.*;
 
 import javax.xml.bind.*;
 import javax.xml.bind.annotation.*;
-import javax.xml.transform.stream.*;
-import javax.xml.validation.*;
 
-import org.apache.commons.lang.*;
 import org.slf4j.*;
-import org.w3c.dom.Element;
 import org.xml.sax.*;
 
 import temp.ExtendedModel;
@@ -32,7 +28,7 @@ public class TaskSpec {
 	
 	public static final Logger logger = LoggerFactory.getLogger(TaskSpec.class);
 
-	public static final Class[] classes = {TaskSpec.class, FitterSpec.class, ALGSpec.class, DASASpec.class, DESpecOld.class, DESpec.class, EvalSpec.class,
+	public static final Class[] classes = {TaskSpec.class, FitterSpec.class, DESpec.class, EvalSpec.class,
 		TrainTestSpec.class,SimulatorSpec.class, CVODESpec.class, LeaveOneOutSpec.class,CrossValidSpec.class};
 
 	@XmlTransient
@@ -103,16 +99,6 @@ public class TaskSpec {
 //		m.setSchema(schema);
 
 		m.marshal(taskSpec, new File(filepath));
-	}
-
-	public static void main(String[] args) throws JAXBException, SAXException {
-
-		TaskSpec ts = TaskSpec.unmarshal("res/aquatic/ecem/Zurich/task/zur.xml");
-		System.out.println();
-
-		TaskSpec.marshal(ts, "res/aquatic/ecem/Zurich/task/zzz2.xml");
-		logger.info(" marshaled successfully");
-
 	}
 
 	public int getNumRuns() {

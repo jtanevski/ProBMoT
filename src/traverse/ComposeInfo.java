@@ -3,8 +3,6 @@ package traverse;
 
 import java.util.*;
 
-import struct.*;
-import util.*;
 
 public class ComposeInfo {
 	String name;

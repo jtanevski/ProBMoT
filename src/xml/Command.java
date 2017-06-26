@@ -10,8 +10,8 @@ public enum Command {
 	@XmlEnumValue("simulate")
 	SIMULATE,
 
-	@XmlEnumValue("fit")
-	FIT,
+//	@XmlEnumValue("fit")
+//	FIT,
 
 	@XmlEnumValue("write_eq")
 	WRITE_EQ,
@@ -28,8 +28,8 @@ public enum Command {
 	@XmlEnumValue("duplicate")
 	DUPLICATE,
 
-	@XmlEnumValue("fit_each")
-	FIT_EACH,
+//	@XmlEnumValue("fit_each")
+//	FIT_EACH,
 
 	@XmlEnumValue("exhaustive_search")
 	EXHAUSTIVE_SEARCH,
@@ -43,17 +43,17 @@ public enum Command {
 	@XmlEnumValue("process_list")
 	PROCESS_LIST,
 
-	@XmlEnumValue("dot_names")
-	DOT_NAMES,
-
-	@XmlEnumValue("dot_all")
-	DOT_ALL,
-
-	@XmlEnumValue("dot_proper")
-	DOT_PROPER,
-
-	@XmlEnumValue("mat_tree")
-	MAT_TREE,
+//	@XmlEnumValue("dot_names")
+//	DOT_NAMES,
+//
+//	@XmlEnumValue("dot_all")
+//	DOT_ALL,
+//
+//	@XmlEnumValue("dot_proper")
+//	DOT_PROPER,
+//
+//	@XmlEnumValue("mat_tree")
+//	MAT_TREE,
 
 	@XmlEnumValue("count")
 	COUNT,
