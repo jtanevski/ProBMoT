@@ -3,7 +3,6 @@ package serialize;
 import java.util.*;
 
 import serialize.node.*;
-import temp.*;
 import equation.*;
 
 public class MSCSerializer

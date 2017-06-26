@@ -1,13 +1,10 @@
 package temp;
 
-import java.util.Map.Entry;
-
 import org.antlr.runtime.*;
 import org.antlr.runtime.tree.*;
 
 import parser.*;
 import struct.*;
-import struct.inst.*;
 import util.*;
 import xml.*;
 

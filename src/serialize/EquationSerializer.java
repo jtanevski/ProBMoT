@@ -1,11 +1,5 @@
 package serialize;
 
-import java.util.*;
-
-import org.apache.commons.lang.*;
-
-import serialize.node.*;
-import struct.*;
 import struct.inst.*;
 import equation.*;
 

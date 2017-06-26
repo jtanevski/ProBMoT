@@ -4,8 +4,6 @@ package struct.inst;
 
 import java.io.*;
 
-import org.apache.commons.lang.*;
-
 import struct.*;
 import struct.temp.*;
 import util.*;

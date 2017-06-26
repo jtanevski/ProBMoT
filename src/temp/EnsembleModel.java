@@ -5,13 +5,6 @@ import java.util.*;
 import com.google.common.collect.BiMap;
 
 import fit.objective.Boosting;
-import fit.objective.BoostingLossFunction;
-import fit.objective.RMSEMultiDataset;
-import fit.objective.TrajectoryObjectiveFunction;
-
-import struct.*;
-import struct.inst.*;
-import xml.TaskSpec;
 
 public class EnsembleModel {
 

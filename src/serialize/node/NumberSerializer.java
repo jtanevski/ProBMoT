@@ -3,9 +3,6 @@
  */
 package serialize.node;
 
-import org.apache.commons.lang.*;
-
-import equation.*;
 import equation.Number;
 
 public class NumberSerializer

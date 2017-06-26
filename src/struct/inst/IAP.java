@@ -3,7 +3,6 @@ package struct.inst;
 import java.io.*;
 
 import struct.temp.*;
-import util.*;
 
 public class IAP extends AP {
 	/* Reference */

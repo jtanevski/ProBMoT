@@ -7,11 +7,8 @@ import org.antlr.runtime.tree.*;
 import org.apache.commons.lang3.*;
 
 import parser.*;
-import struct.*;
 import struct.inst.*;
-import struct.temp.*;
 import util.*;
-import xml.*;
 import equation.*;
 import equation.Number;
 

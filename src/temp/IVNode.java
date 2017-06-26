@@ -2,7 +2,6 @@ package temp;
 
 import java.util.*;
 
-import struct.*;
 import struct.inst.*;
 
 public class IVNode {

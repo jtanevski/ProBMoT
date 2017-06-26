@@ -6,7 +6,6 @@ import java.util.*;
 import equation.Number;
 
 import serialize.*;
-import struct.*;
 import struct.inst.*;
 import temp.IQGraph.Type;
 
