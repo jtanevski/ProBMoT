@@ -2,7 +2,6 @@ package search;
 
 import java.util.*;
 
-import struct.*;
 import struct.inst.*;
 import struct.temp.*;
 import temp.*;

@@ -28,6 +28,9 @@ import temp.IQNode;
 import temp.SimpleWriter;
 import traverse.Traverse;
 
+//This class is used to test new features
+
+
 public class Test {
 
 	/**

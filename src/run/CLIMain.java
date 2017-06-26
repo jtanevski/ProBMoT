@@ -6,7 +6,6 @@ import org.slf4j.*;
 
 import search.*;
 import serialize.*;
-import struct.*;
 import struct.inst.*;
 import struct.temp.*;
 import temp.*;
@@ -17,8 +16,8 @@ import cli.*;
 import com.martiansoftware.jsap.*;
 
 public class CLIMain {
-	public static final Logger logger = LoggerFactory.getLogger(CLIMain.class);
-	public static CLIParser cliParser;
+	private static final Logger logger = LoggerFactory.getLogger(CLIMain.class);
+	private static CLIParser cliParser;
 
 	public static void main(String args[]) {
 		try {

@@ -4,7 +4,6 @@ import java.util.*;
 
 import org.apache.commons.lang3.*;
 
-import struct.*;
 import struct.inst.*;
 import struct.temp.*;
 import temp.*;

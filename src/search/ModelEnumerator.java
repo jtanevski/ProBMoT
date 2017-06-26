@@ -7,12 +7,8 @@ import org.antlr.runtime.*;
 import org.apache.commons.configuration.*;
 import org.slf4j.*;
 
-import fit.*;
-
 import struct.temp.*;
 import temp.*;
-import util.*;
-import xml.*;
 
 public class ModelEnumerator {
 	public static final Logger logger = LoggerFactory.getLogger(ModelEnumerator.class);

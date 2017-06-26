@@ -4,11 +4,8 @@ import java.util.Locale;
 
 import org.slf4j.*;
 
-import serialize.*;
-import struct.*;
+
 import task.*;
-import temp.*;
-import traverse.*;
 import util.*;
 import xml.*;
 import cli.*;
@@ -18,8 +15,8 @@ import com.martiansoftware.jsap.*;
 import fit.*;
 
 public class CLITaskMain {
-	public static final Logger logger = LoggerFactory.getLogger(CLITaskMain.class);
-	public static CLIParserTask cliParser;
+	private static final Logger logger = LoggerFactory.getLogger(CLITaskMain.class);
+	private static CLIParserTask cliParser;
 
 	public static void main(String args[]) throws Exception {
 		try {
