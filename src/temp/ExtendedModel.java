@@ -18,10 +18,10 @@ public class ExtendedModel {
 	
 	private Map<String, Double> fitnessMeasures = new LinkedHashMap<String, Double>();
 	private Map<String, Double> evalMeasures = new LinkedHashMap<String, Double>();
-	private Map<String, Double> validMeasures = new LinkedHashMap<String, Double>();
+	//private Map<String, Double> validMeasures = new LinkedHashMap<String, Double>();
 	private Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
 	private List<Dataset> evaluations = new ArrayList<Dataset>();
-	private List<Dataset> validations = new ArrayList<Dataset>();
+	//private List<Dataset> validations = new ArrayList<Dataset>();
 	private List<Dataset> simulations = new ArrayList<Dataset>();
 	private List<Map<String, Double>> initials = new LinkedList<Map<String,Double>>();
 	private boolean successful = true;
@@ -84,9 +84,10 @@ public class ExtendedModel {
 		for (Map.Entry<String, Double> entry : this.fitnessMeasures.entrySet()) {
 			buf.append("//Train Error :" + entry.getKey() + " = " + entry.getValue() + "\n");
 		}
-		for (Map.Entry<String, Double> entry : this.validMeasures.entrySet()) {
-			buf.append("//Validation Error  :" + entry.getKey() + " = " + entry.getValue() + "\n");
-		}
+		
+//		for (Map.Entry<String, Double> entry : this.validMeasures.entrySet()) {
+//			buf.append("//Validation Error  :" + entry.getKey() + " = " + entry.getValue() + "\n");
+//		}
 		
 		for (Map.Entry<String, Double> entry : this.evalMeasures.entrySet()) {
 			buf.append("//Test Error  :" + entry.getKey() + " = " + entry.getValue() + "\n");
@@ -125,13 +126,13 @@ public class ExtendedModel {
 		this.evalMeasures = evalMeasures;
 	}
 	
-	public Map<String, Double> getValidMeasures() {
-		return validMeasures;
-	}
-
-	public void setValidMeasures(Map<String, Double> validMeasures) {
-		this.validMeasures = validMeasures;
-	}
+//	public Map<String, Double> getValidMeasures() {
+//		return validMeasures;
+//	}
+//
+//	public void setValidMeasures(Map<String, Double> validMeasures) {
+//		this.validMeasures = validMeasures;
+//	}
 
 	public int getModelNo() {
 		return modelNo;
@@ -145,17 +146,17 @@ public class ExtendedModel {
 		return evaluations;
 	}
 
-	public List<Dataset> getValidations() {
-		return validations;
-	}
+//	public List<Dataset> getValidations() {
+//		return validations;
+//	}
 	
 	public void setEvaluations(List<Dataset> evaluations) {
 		this.evaluations = evaluations;
 	}
 	
-	public void setValidations(List<Dataset> validations) {
-		this.validations = validations;
-	}
+//	public void setValidations(List<Dataset> validations) {
+//		this.validations = validations;
+//	}
 
 	public List<Dataset> getSimulations() {
 		return simulations;

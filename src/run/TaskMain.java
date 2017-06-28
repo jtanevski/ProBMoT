@@ -60,20 +60,20 @@ public class TaskMain {
 					
 				}
 			}
-			else if (taskSpec.settings.evaluation instanceof CrossValidSpec)
-			{	
-				taskSpec.setNumRuns(0);
-				taskSpec.setEndRun(0);
-				CrossValidSpec cvs= (CrossValidSpec) taskSpec.settings.evaluation;
-				for (DatasetSpec ds : taskSpec.data) {
-					
-					task = new Task(taskSpec);
-					System.out.println("CrossValidation : Iteration :" + taskSpec.getNumRuns() + "-TestDS:" + ds.id);
-					task.perform();
-					taskSpec.setNumRuns(taskSpec.getNumRuns() + 1);
-					
-				}
-			}
+//			else if (taskSpec.settings.evaluation instanceof CrossValidSpec)
+//			{	
+//				taskSpec.setNumRuns(0);
+//				taskSpec.setEndRun(0);
+//				CrossValidSpec cvs= (CrossValidSpec) taskSpec.settings.evaluation;
+//				for (DatasetSpec ds : taskSpec.data) {
+//					
+//					task = new Task(taskSpec);
+//					System.out.println("CrossValidation : Iteration :" + taskSpec.getNumRuns() + "-TestDS:" + ds.id);
+//					task.perform();
+//					taskSpec.setNumRuns(taskSpec.getNumRuns() + 1);
+//					
+//				}
+//			}
 			else {
 			
 				task = new Task(taskSpec);

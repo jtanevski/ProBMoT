@@ -8,8 +8,8 @@ import org.eclipse.persistence.oxm.annotations.*;
 public abstract class EvalSpec {
 	@XmlElement(defaultValue = "")
 	public String train;
-	@XmlElement(defaultValue = "")
-	public String validation;
+//	@XmlElement(defaultValue = "")
+//	public String validation;
 	@XmlElement(defaultValue = "")
 	public String test;
 }

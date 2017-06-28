@@ -29,7 +29,7 @@ public class TaskSpec {
 	public static final Logger logger = LoggerFactory.getLogger(TaskSpec.class);
 
 	public static final Class[] classes = {TaskSpec.class, FitterSpec.class, DESpec.class, EvalSpec.class,
-		TrainTestSpec.class,SimulatorSpec.class, CVODESpec.class, LeaveOneOutSpec.class,CrossValidSpec.class};
+		TrainTestSpec.class,SimulatorSpec.class, CVODESpec.class, LeaveOneOutSpec.class};
 
 	@XmlTransient
 	public String filename;
