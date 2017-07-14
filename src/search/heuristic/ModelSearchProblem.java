@@ -3,7 +3,6 @@ package search.heuristic;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.TreeSet;
@@ -68,7 +67,9 @@ public class ModelSearchProblem extends Problem {
 	private double minerror = Double.POSITIVE_INFINITY;
 	private int populationSize;
 	
-	private TreeSet<ExtendedModel> plateau;
+	private TreeSet<PlateauModel> plateau;
+	
+	//private TreeSet<ExtendedModel> plateau;
 	public ModelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, TrajectoryObjectiveFunction objFunction, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec) {
@@ -154,20 +155,15 @@ public class ModelSearchProblem extends Problem {
 		//solutionType_ = new ModelSolution(this); //Mixed integer solution
 		solutionType_ = new RealSolutionType(this);
 		
-		plateau = new TreeSet<ExtendedModel>(new Comparator<ExtendedModel>() {
-			public int compare(ExtendedModel e1, ExtendedModel e2) {
-				Double e1f = e1.getFitnessMeasures().values().iterator().next();
-				Double e2f = e2.getFitnessMeasures().values().iterator().next();
-				return e1f.compareTo(e2f);
-			}
-		}); 
+		plateau = new TreeSet<PlateauModel>();
 		
 	}
 	
 	@Override
 	public void evaluate(Solution solution) throws JMException {
 		Variable[] genotype = solution.getDecisionVariables();
-		ExtendedModel phenotype = codec.decode(Arrays.copyOfRange(genotype, 0, cLength));
+		Variable[] structure = Arrays.copyOfRange(genotype, 0, cLength);
+		ExtendedModel phenotype = codec.decode(structure);
 
 		IQGraph graph = new IQGraph(phenotype.getModel());
 
@@ -292,7 +288,24 @@ public class ModelSearchProblem extends Problem {
 			solution.setObjective(0, error);
 			phenotype.getFitnessMeasures().put(objFunction.getName(), error);
 			
-			plateau.add(phenotype);
+			//keep only the best set of parameter values for each structure
+			PlateauModel cModel = new PlateauModel(structure, phenotype);
+			
+			boolean pass = false;
+			TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
+			for(PlateauModel p : plateau) {
+				if(p.equals(cModel)) {
+					plateau2.add((p.compareTo(cModel) > 0) ? cModel : p);
+					pass = true;
+				} else {
+					plateau2.add(p);
+				}
+			}
+			
+			plateau.clear();
+			plateau.addAll(plateau2);
+			if(!pass) plateau.add(cModel);
+			
 			filterPlateau();
 			
 			if(error < minerror){
@@ -317,26 +330,37 @@ public class ModelSearchProblem extends Problem {
 		this.populationSize = populationSize;
 	}
 	
-	public TreeSet<ExtendedModel> getPlateau() {
-		return plateau;
+	public ArrayList<ExtendedModel> getPlateau() {
+		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
+		for(PlateauModel p : plateau) toReturn.add(p.eModel);
+		return toReturn;
 	}
 	
 	
 	//How big can the plateau get so this becomes computationally expensive step?
 	private void filterPlateau() {
 		
-		
-		Iterator<ExtendedModel> pIterator = plateau.iterator();
-		ExtendedModel best = pIterator.next();
+		Iterator<PlateauModel> pIterator = plateau.iterator();
+		PlateauModel best = pIterator.next();
 		while (pIterator.hasNext()) {
-			ExtendedModel next = pIterator.next();
-			Double bestVal = best.getFitnessMeasures().get(objFunction.getName());
-			Double nextVal = next.getFitnessMeasures().get(objFunction.getName());
-			if (bestVal * 1.01 < nextVal) {
+			PlateauModel next = pIterator.next();
+			Double bestVal = best.eModel.getFitnessMeasures().get(objFunction.getName());
+			Double nextVal = next.eModel.getFitnessMeasures().get(objFunction.getName());
+			if (bestVal * 1.1 < nextVal) {
 				break;
 			}
 			best = next;
 		}
-		plateau = new TreeSet<ExtendedModel>(plateau.headSet(best,true));
+		
+		//Create custom headview because treeset uses compareto instead of equals for this
+		TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
+		pIterator = plateau.iterator();
+		while(pIterator.hasNext()) {
+			PlateauModel p = pIterator.next();
+			plateau2.add(p);
+			if(p.equals(best)) break;
+		}
+		
+		plateau = new TreeSet<PlateauModel>(plateau2);
 	}
 }

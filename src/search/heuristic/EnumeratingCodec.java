@@ -103,6 +103,7 @@ public class EnumeratingCodec implements HeuristicCodec {
 		}
 		code.add(counter);
 		
+		System.out.println("Enumerated " + counter + " candidate models.");
 		return code;
 
 	}
