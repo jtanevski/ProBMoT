@@ -10,8 +10,8 @@ public class IVNode {
 
 	IQNode inputIQ; // after aggregating all input equations
 
-	Map<Integer, IQNode> inputIQs = new LinkedHashMap<Integer, IQNode>();
-	Map<Integer, IQNode> outputIQs = new LinkedHashMap<Integer, IQNode>();
+	public Map<Integer, IQNode> inputIQs = new LinkedHashMap<Integer, IQNode>();
+	public Map<Integer, IQNode> outputIQs = new LinkedHashMap<Integer, IQNode>();
 
 	public IVNode(IV iv) {
 		this.var = iv;

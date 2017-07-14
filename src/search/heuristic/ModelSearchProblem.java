@@ -167,7 +167,7 @@ public class ModelSearchProblem extends Problem {
 
 		IQGraph graph = new IQGraph(phenotype.getModel());
 
-		Output output;
+		Output output = null;
 		
 		double error = 0;
 		boolean failed = false;
@@ -279,11 +279,21 @@ public class ModelSearchProblem extends Problem {
 			failed = true;
 		}
 		
-		//TODO: Regularize the objective function!
 		
 		if(failed) {
 			solution.setObjective(0, Double.POSITIVE_INFINITY);
 		} else {
+			//Regularize the objective function!
+			//using number of parameters
+			double comp = output.graph.reachParameters.size()/codec.internalEnumeratingCodec.pCompHigh;
+			
+			//using number of fragments
+//			double comp = 0;
+//			for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+//			comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
+			
+			error /= (outputData.getNCols()-1)*datasets.size();
+			error = (error+comp)/2;
 			
 			solution.setObjective(0, error);
 			phenotype.getFitnessMeasures().put(objFunction.getName(), error);

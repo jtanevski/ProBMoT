@@ -38,10 +38,10 @@ public class EnumeratingCodec implements HeuristicCodec {
 	protected ListMap<String,ICNode> params;
 	protected ListMap<String,IVNode> initials;
 	protected ListMap<String,OutputCons> outputs;
+	protected double pCompLow, pCompHigh, fCompLow, fCompHigh;
 	
 
-	public EnumeratingCodec() {
-	}
+	public EnumeratingCodec() {}
 
 	@Override
 	public LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec) {
@@ -77,7 +77,8 @@ public class EnumeratingCodec implements HeuristicCodec {
 				}
 			}
 		
-
+			pCompLow = fCompLow = Integer.MAX_VALUE;
+			pCompHigh = fCompHigh = 0;
 			
 			//Have to go trough all models in order to find all referenced parameters
 			while(search.hasNextModel()) {
@@ -90,6 +91,19 @@ public class EnumeratingCodec implements HeuristicCodec {
 				//Protect against no parameters because Java
 				//Extract parameters
 				if (currentOutput.graph.unknownParameters.size() != 0) params.putAll(currentOutput.graph.unknownParameters);
+				
+				int pComp = currentOutput.graph.reachParameters.size();
+				
+				if(pComp<pCompLow) pCompLow = pComp;
+				if(pComp>pCompHigh) pCompHigh = pComp;
+				
+				//TODO: is this the best way to do this?
+				int fComp = 0;
+				for(IVNode var : currentOutput.graph.reachVariables.valueList()) fComp += var.inputIQs.size();
+				
+				if(fComp<fCompLow) fCompLow = pComp;
+				if(fComp>fCompHigh) fCompHigh = pComp;
+						
 			
 				//Take care of the number of models
 				counter++;

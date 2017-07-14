@@ -833,7 +833,8 @@ public class Task {
 		Algorithm algorithm = null;
 		DESpec spec = (DESpec) ts.settings.fitter;
 
-		TrajectoryObjectiveFunction objectiveFun = setObjectiveFunc(spec);
+		//Fixed due to regularization
+		TrajectoryObjectiveFunction objectiveFun = new RelativeRMSEObjectiveFunctionMultiDataset(datasets, outsToCols);
 		
 		
 		ModelSearchProblem problem = new ModelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
@@ -877,7 +878,7 @@ public class Task {
 		
 		//Write output
 		
-		AraryList<ExtendedModel> plateau = problem.getPlateau();
+		ArrayList<ExtendedModel> plateau = problem.getPlateau();
 		
 		int counter = 1;
 		for (ExtendedModel model : plateau) {
