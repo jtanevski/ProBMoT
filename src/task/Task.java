@@ -24,6 +24,7 @@ import org.slf4j.*;
 import org.xml.sax.*;
 
 import search.*;
+import search.heuristic.ModelSearchProblem;
 import serialize.*;
 import struct.inst.*;
 import struct.temp.*;
@@ -378,6 +379,7 @@ public class Task {
 				this.evaldir.mkdir();
 			}
 			break;
+		case HEURISTIC_SEARCH:
 		case EXHAUSTIVE_SEARCH:
 			this.outdir = new File(s);
 			if (!outdir.isDirectory()) {
@@ -434,6 +436,9 @@ public class Task {
 		case WRITE_EQ:
 			writeEQ();
 			break;
+		case HEURISTIC_SEARCH:
+			heuristicSearch();
+			break;
 		case EXHAUSTIVE_SEARCH:
 			enumerateModel(true);
 			break;
@@ -470,7 +475,8 @@ public class Task {
 
     /* EVALUATION BLOCK */
     
-    //Evaluates a single model - see simulateModel
+
+	//Evaluates a single model - see simulateModel
 	private void evaluateModels() throws InstantiationException, IllegalAccessException, ClassNotFoundException,
 			FailedSimulationException, RecognitionException, IOException {
 
@@ -803,6 +809,96 @@ public class Task {
 			this.out.println(eModel);
 		}
 	}
+	
+	
+	
+	private void heuristicSearch() throws SecurityException, IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, ClassNotFoundException, JMException {
+		if (this.incompleteModel == null) {
+			throw new RuntimeException(
+					"Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
+		}
+
+		ExtendedModel ext = new ExtendedModel(incompleteModel);
+
+		// create fitperformance logger
+		Logger flogger = null;
+		
+		flogger = Logger.getLogger("fitPerformance");
+		flogger.setUseParentHandlers(false);
+		FileHandler fh = new FileHandler(ts.outputFilepath + "/" + ts.filename + "_fitPerformace" + ".log");
+		fh.setFormatter(new SimpleFormatter());
+		flogger.addHandler(fh);
+		
+
+		Algorithm algorithm = null;
+		DESpec spec = (DESpec) ts.settings.fitter;
+
+		TrajectoryObjectiveFunction objectiveFun = setObjectiveFunc(spec);
+		
+		
+		ModelSearchProblem problem = new ModelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
+
+
+		algorithm = new DE(problem);
+
+		HashMap<String, Object> parameters;
+		Operator crossover; // Crossover operator
+		Operator selection; // Selection operator
+
+		algorithm.setInputParameter("populationSize", spec.population);
+		problem.setPopulationSize(spec.population);
+
+		Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
+
+		algorithm.setInputParameter("maxEvaluations", max_evals);
+
+		MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
+		msf.setSeed(spec.seed);
+		PseudoRandom.setRandomGenerator(msf);
+
+		// Crossover operator
+		parameters = new HashMap<String, Object>();
+		parameters.put("CR", spec.Cr);
+		parameters.put("F", spec.F);
+		parameters.put("DE_VARIANT", spec.strategy.toString());
+
+		crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
+
+		// Add the operators to the algorithm
+		parameters = null;
+		selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
+
+		algorithm.addOperator("crossover", crossover);
+		algorithm.addOperator("selection", selection);
+
+		// Execute the optimization
+		algorithm.execute();
+
+		
+		//Write output
+		
+		TreeSet<ExtendedModel> plateau = problem.getPlateau();
+		
+		int counter = 1;
+		for (ExtendedModel model : plateau) {
+			this.sim_out = new PrintStream(
+					FileUtils.openOutputStream(new File(this.simdir + "/Model" + counter + ".sim")));
+			for (int i = 0; i < datasets.size(); i++) {
+				out.println("// Model" + counter + " for dataset " + datasets.get(i).getFilepath());
+				out.println(model);
+				this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+				try {
+					this.sim_out.println(model.getSimulations().get(i));
+				} catch (NullPointerException e) {
+					this.sim_out.println("FAILED SIMULATION");
+				}
+			}
+			counter++;
+		}
+		System.out.println("Wrote " + plateau.size() + " models.");
+		
+	}
+	
 
 	private void enumerateModel(boolean fit, String... format)
 			throws IOException, InterruptedException, ConfigurationException, RecognitionException, JMException,

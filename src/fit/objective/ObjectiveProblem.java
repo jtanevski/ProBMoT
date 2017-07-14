@@ -117,7 +117,7 @@ public class ObjectiveProblem extends Problem {
 						this.initialValues[i] = Double.NaN;
 						initialNamesToIndexes.put(name, i);
 					} else {
-						System.out.println("WARNING: Endgenous variable " + name + " is not mapped to dataset column. Initial value will be fitted.");
+						System.out.println("WARNING: Endogenous variable " + name + " is not mapped to dataset column. Initial value will be fitted.");
 						this.initialValues[i] = Double.NaN;
 						initialIndexes.add(i);
 					}

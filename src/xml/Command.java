@@ -84,4 +84,7 @@ public enum Command {
 	
 	@XmlEnumValue("test_evaluate")
 	TEST_EVALUATE,
+	
+	@XmlEnumValue("heuristic_search")
+	HEURISTIC_SEARCH,
 }

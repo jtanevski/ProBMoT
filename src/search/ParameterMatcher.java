@@ -40,7 +40,7 @@ public class ParameterMatcher {
 	 */
 	private boolean nextFirst;
 
-	ParameterMatcher(ExtendedModel extendedModel) {
+	public ParameterMatcher(ExtendedModel extendedModel) {
 		this.model = extendedModel;
 
 		Collection<IP> topLevelIPs = extendedModel.getModel().topLevelIPs.values();
