@@ -877,7 +877,7 @@ public class Task {
 		
 		//Write output
 		
-		TreeSet<ExtendedModel> plateau = problem.getPlateau();
+		AraryList<ExtendedModel> plateau = problem.getPlateau();
 		
 		int counter = 1;
 		for (ExtendedModel model : plateau) {
