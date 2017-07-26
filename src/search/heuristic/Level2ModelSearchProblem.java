@@ -1,0 +1,418 @@
+package search.heuristic;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
+import java.util.logging.Logger;
+
+import org.antlr.runtime.RecognitionException;
+import org.apache.commons.lang3.ArrayUtils;
+
+import com.google.common.collect.BiMap;
+
+import fit.CVodeSimulator;
+import fit.LinearSolver;
+import fit.MersenneTwisterFastFix;
+import fit.NonlinearSolver;
+import fit.ODEModel;
+import fit.ODESolver;
+import fit.OutputModel;
+import fit.objective.ObjectiveProblem;
+import fit.objective.RMSEMultiDataset;
+import fit.objective.TrajectoryObjectiveFunction;
+import jmetal.core.Algorithm;
+import jmetal.core.Operator;
+import jmetal.core.Problem;
+import jmetal.core.Solution;
+import jmetal.core.SolutionSet;
+import jmetal.core.Variable;
+import jmetal.encodings.solutionType.IntSolutionType;
+import jmetal.metaheuristics.singleObjective.differentialEvolution.DE;
+import jmetal.operators.crossover.CrossoverFactory;
+import jmetal.operators.selection.SelectionFactory;
+import jmetal.util.JMException;
+import jmetal.util.PseudoRandom;
+import struct.inst.IV;
+import struct.inst.Model;
+import task.Task;
+import temp.Dataset;
+import temp.ExtendedModel;
+import temp.IQGraph;
+import temp.Output;
+import util.FailedSimulationException;
+import xml.CVODESpec;
+import xml.DESpec;
+import xml.FitterSpec;
+import xml.InitialValuesSpec;
+import xml.OutputSpec;
+
+public class Level2ModelSearchProblem extends Problem {
+
+	protected HeuristicCodec codec;
+	private List<Dataset> datasets;
+	private OutputSpec outputSpec;
+	private BiMap<String, String> dimsToCols;
+	private BiMap<String, String> endosToCols;
+	private BiMap<String, String> exosToCols;
+	private BiMap<String, String> outsToCols;
+	private BiMap<String, String> weightsToCols;
+
+	ArrayList<CVodeSimulator> simulators;
+	ArrayList<ODEModel> odeModels;
+	ArrayList<OutputModel> outputModels;
+
+	private CVODESpec spec;
+	private FitterSpec fitterSpec;
+	// private CVodeSimulator simulator;
+	private InitialValuesSpec initialValuesSpec;
+
+	private int cLength;
+
+	// private Dataset simulation, outputData;
+	public TrajectoryObjectiveFunction objFunction;
+
+	private int count = 1;
+	Logger logger = Logger.getLogger("fitPerformance");
+	private double minerror = Double.POSITIVE_INFINITY;
+	private int populationSize;
+
+	private TreeSet<PlateauModel> plateau;
+	HashMap<PlateauModel, Double> seen;
+
+	public Level2ModelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
+			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
+			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec) {
+
+		// things needed by the evaluation function
+		this.datasets = datasets;
+		this.outputSpec = outputSpec;
+		this.dimsToCols = dimsToCols;
+		this.endosToCols = endosToCols;
+		this.exosToCols = exosToCols;
+		this.outsToCols = outsToCols;
+		this.weightsToCols = weightsToCols;
+		this.fitterSpec = fitterSpec;
+		this.spec = spec;
+		this.initialValuesSpec = initialValuesSpec;
+
+		// Take care of the integer part of the problem
+		codec = new GeneticCodec();
+		codec.encode(extendedModel, outputSpec);
+
+		cLength = codec.code.size();
+
+		numberOfVariables_ = cLength;
+
+		// Limits and ordering
+		lowerLimit_ = new double[numberOfVariables_];
+		upperLimit_ = new double[numberOfVariables_];
+
+		// model variables
+		for (int i = 0; i < cLength; i++) {
+			lowerLimit_[i] = 1;
+			upperLimit_[i] = codec.code.get(i);
+		}
+
+		this.numberOfConstraints_ = 0; // No constraints
+		this.numberOfObjectives_ = 1; // Single-objective optimization
+
+		problemName_ = extendedModel.getModel().id; // Name of the incomplete model
+
+		// Integer solution
+		solutionType_ = new IntSolutionType(this);
+
+		plateau = new TreeSet<PlateauModel>();
+		seen = new HashMap<PlateauModel, Double>();
+
+	}
+
+	@Override
+	public void evaluate(Solution solution) throws JMException {
+		Variable[] structure = solution.getDecisionVariables();
+		ExtendedModel model = codec.decode(structure);
+		boolean failed = false;
+
+		// Careful! The seen map should not be sorted because the fitness of the empty
+		// extendedmodel is null. It can be used to efficiently store seen structures
+		// only.
+		PlateauModel isSeen = new PlateauModel(structure, model);
+		if (seen.containsKey(isSeen)) {
+			solution.setObjective(0, seen.get(isSeen));
+			return;
+		} else {
+			seen.put(isSeen, Double.POSITIVE_INFINITY);
+		}
+
+		Output output = null;
+		Double error = 0.0;
+		try {
+
+			IQGraph graph = new IQGraph(model.getModel());
+
+			output = new Output(outputSpec, graph);
+
+			Algorithm algorithm = null;
+			DESpec spec = (DESpec) fitterSpec;
+
+			TrajectoryObjectiveFunction objectiveFun;
+			if (spec.objectives.size() == 0) {
+				objectiveFun = new RMSEMultiDataset(datasets, outsToCols);
+			} else if (spec.objectives.get(0).contains("WRMSE")) {
+				objectiveFun = (TrajectoryObjectiveFunction) (Class.forName("fit.objective." + spec.objectives.get(0))
+						.getConstructor(List.class, BiMap.class, BiMap.class)
+						.newInstance(datasets, outsToCols, weightsToCols));
+			} else {
+				objectiveFun = (TrajectoryObjectiveFunction) (Class.forName("fit.objective." + spec.objectives.get(0))
+						.getConstructor(List.class, BiMap.class).newInstance(datasets, outsToCols));
+			}
+
+			this.objFunction = objectiveFun;
+
+			ObjectiveProblem problem = new ObjectiveProblem(output, objectiveFun, datasets, dimsToCols, endosToCols,
+					exosToCols, outsToCols, this.spec, initialValuesSpec);
+
+			algorithm = new DE(problem);
+			problem.setPopulationSize(spec.population);
+
+			HashMap<String, Object> parameters;
+			Operator crossover; // Crossover operator
+			Operator selection; // Selection operator
+
+			algorithm.setInputParameter("populationSize", spec.population);
+
+			// problem.getNumberOfVariables() contains the number of all variables
+			// that need fitting: initial + output + model parameters. no need to
+			// recalculate!
+			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
+
+			algorithm.setInputParameter("maxEvaluations", max_evals);
+
+			MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
+			msf.setSeed(spec.seed);
+			PseudoRandom.setRandomGenerator(msf);
+
+			// Crossover operator
+			parameters = new HashMap<String, Object>();
+			parameters.put("CR", spec.Cr);
+			parameters.put("F", spec.F);
+			parameters.put("DE_VARIANT", spec.strategy.toString());
+
+			crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
+
+			// Add the operators to the algorithm
+			parameters = null;
+			selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
+
+			algorithm.addOperator("crossover", crossover);
+			algorithm.addOperator("selection", selection);
+
+			// Execute the optimization
+
+			SolutionSet population = algorithm.execute();
+			Variable[] variables = population.get(0).getDecisionVariables();
+
+			for (int i = 0; i < problem.initialIndexes.size(); i++) {
+				int indexval = problem.initialIndexes.get(i).intValue();
+				String ivName = problem.initialFitted.get(indexval).id;
+				Double iVal = variables[i + problem.initialIndexes.size()].getValue();
+				model.getModel().allVars.get(ivName).initial = iVal;
+			}
+
+			for (int i = 0; i < problem.modelFitted.size(); i++) {
+				String icName = problem.modelFitted.get(i).id;
+				Double icValue = variables[problem.totalInitialToFit + i].getValue();
+				model.getModel().allConsts.get(icName).value = icValue;
+			}
+
+			Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
+			for (int i = 0; i < problem.outputFitted.size(); i++) {
+				String outputName = output.fitted.getKey(i);
+				Double outputValue = variables[problem.totalInitialToFit + problem.modelFitted.size() + i].getValue();
+
+				outputConsts.put(outputName, outputValue);
+			}
+
+			model.setOutputConstants(outputConsts);
+
+			List<Dataset> simulations = null;
+			try {
+				simulations = simulateModel(model, datasets);
+			} catch (InstantiationException | IllegalAccessException | ClassNotFoundException
+					| FailedSimulationException | RecognitionException | IOException e) {
+				logger.warning("Fitted model simulation failed");
+			}
+			model.setSimulations(simulations);
+
+			Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
+
+			error = population.get(0).getObjective(0);
+			fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+
+			model.setFitnessMeasures(fitnessMeasures);
+
+		} catch (Exception e) {
+			logger.warning("Something went wrong. A model evaluation failed.");
+			failed = true;
+		}
+
+		if (failed) {
+			solution.setObjective(0, Double.POSITIVE_INFINITY);
+		} else {
+			// Regularize the objective function!
+			// using number of parameters
+			double comp = (output.graph.reachParameters.size()) / (codec.internalEnumeratingCodec.pCompHigh);
+
+			// using number of fragments
+			// double comp = 0;
+			// for(IVNode var : output.graph.reachVariables.valueList()) comp +=
+			// var.inputIQs.size();
+			// comp = (comp -
+			// codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh
+			// - codec.internalEnumeratingCodec.fCompLow);
+
+			double lambda = 0.5;
+			error = lambda * error + (1 - lambda) * comp;
+
+			solution.setObjective(0, error);
+			seen.replace(isSeen, error);
+
+			// keep only the best set of parameter values for each structure
+			PlateauModel cModel = new PlateauModel(structure, model);
+
+			boolean pass = false;
+			TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
+			for (PlateauModel p : plateau) {
+				if (p.equals(cModel)) {
+					plateau2.add((p.compareTo(cModel) > 0) ? cModel : p);
+					pass = true;
+				} else {
+					plateau2.add(p);
+				}
+			}
+
+			plateau.clear();
+			plateau.addAll(plateau2);
+			if (!pass)
+				plateau.add(cModel);
+
+			filterPlateau();
+
+			if (error < minerror) {
+				minerror = error;
+			}
+		}
+
+		if (count % 1000 == 0) {
+			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+					+ " models in the plateau");
+		}
+
+		if (count % populationSize == 0) {
+			logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+					+ " models in the plateau");
+		}
+
+		count++;
+
+	}
+
+	// Copied and modified from task
+	private List<Dataset> simulateModel(ExtendedModel em, List<Dataset> datasets)
+			throws InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException,
+			FailedSimulationException, IOException {
+
+		Model model = em.getModel();
+
+		List<Dataset> outputDatas = new ArrayList<Dataset>();
+
+		try {
+			for (int i = 0; i < datasets.size(); i++) {
+
+				for (String name : model.allVars.keySet()) {
+					IV var = model.allVars.get(name);
+					if (initialValuesSpec.usedatasetvalues) {
+						String dsColName = endosToCols.get(name);
+						if (dsColName != null) {
+							var.initial = datasets.get(i).getElem(0, dsColName);
+							model.allVars.put(name, var);
+						}
+					}
+				}
+
+				IQGraph graph = new IQGraph(model);
+				Output output = new Output(outputSpec, graph);
+
+				ODEModel odeModel = new ODEModel(graph, datasets, dimsToCols, exosToCols, i);
+				CVodeSimulator simulator = new CVodeSimulator(ODESolver.BDF, NonlinearSolver.NEWTON);
+				simulator.initialize(odeModel);
+				simulator.setTolerances(spec.reltol, spec.abstol);
+				simulator.setLinearSolver(LinearSolver.SPGMR);
+				simulator.setMaxNumSteps(spec.steps);
+
+				Dataset simulation = simulator.simulate();
+
+				OutputModel outputModel = new OutputModel(output, datasets, simulation, dimsToCols, exosToCols,
+						outsToCols, i);
+
+				Double[] outputs = new Double[em.getOutputConstants().values().size()];
+				em.getOutputConstants().values().toArray(outputs);
+				outputModel.setOutputParameters(ArrayUtils.toPrimitive(outputs));
+
+				outputDatas.add(outputModel.compute());
+
+			}
+			return outputDatas;
+		} catch (FailedSimulationException e) {
+			System.out.println("Simulation error: " + e.getMessage());
+			return null;
+		}
+
+	}
+
+	// copied from ModelSearchProblem
+	private void filterPlateau() {
+
+		Iterator<PlateauModel> pIterator = plateau.iterator();
+		PlateauModel best = pIterator.next();
+		while (pIterator.hasNext()) {
+			PlateauModel next = pIterator.next();
+			Double bestVal = best.eModel.getFitnessMeasures().get(objFunction.getName());
+			Double nextVal = next.eModel.getFitnessMeasures().get(objFunction.getName());
+			if (bestVal * 1.1 < nextVal) {
+				break;
+			}
+			best = next;
+		}
+
+		// Create custom headview because treeset uses compareto instead of equals for
+		// this
+		TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
+		pIterator = plateau.iterator();
+		while (pIterator.hasNext()) {
+			PlateauModel p = pIterator.next();
+			plateau2.add(p);
+			if (p.equals(best))
+				break;
+		}
+
+		plateau = new TreeSet<PlateauModel>(plateau2);
+	}
+
+	public void setPopulationSize(int populationSize) {
+		this.populationSize = populationSize;
+	}
+
+	public ArrayList<ExtendedModel> getPlateau() {
+		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
+		for (PlateauModel p : plateau)
+			toReturn.add(p.eModel);
+		return toReturn;
+	}
+
+}

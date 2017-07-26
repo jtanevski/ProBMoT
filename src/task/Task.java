@@ -13,9 +13,13 @@ import javax.xml.bind.*;
 import jmetal.core.*;
 import jmetal.metaheuristics.singleObjective.cmaes.CMAES;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.*;
+import jmetal.metaheuristics.singleObjective.geneticAlgorithm.pgGA;
 import jmetal.operators.crossover.*;
+import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.*;
 import jmetal.util.*;
+import jmetal.util.parallel.IParallelEvaluator;
+import jmetal.util.parallel.MultithreadedEvaluator;
 
 import org.antlr.runtime.*;
 import org.apache.commons.configuration.*;
@@ -25,6 +29,7 @@ import org.slf4j.*;
 import org.xml.sax.*;
 
 import search.*;
+import search.heuristic.Level2ModelSearchProblem;
 import search.heuristic.ModelSearchProblem;
 import serialize.*;
 import struct.inst.*;
@@ -83,6 +88,7 @@ public class Task {
     
 	public Task(TaskSpec ts) throws IOException, RecognitionException, InstantiationException, IllegalAccessException,
 			NoSuchFieldException, InvocationTargetException, NoSuchMethodException {
+				
 		this.ts = ts;
 
 		if (ts.library == null) {
@@ -837,51 +843,94 @@ public class Task {
 		//Fixed due to regularization
 		TrajectoryObjectiveFunction objectiveFun = new RelativeRMSEObjectiveFunctionMultiDataset(datasets, outsToCols);
 		
+		ArrayList<ExtendedModel> plateau = new ArrayList<ExtendedModel>();
 		
-		ModelSearchProblem problem = new ModelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
 
-
-		algorithm = new CMAES(problem);
-		//algorithm = new DE(problem);
-
-		//HashMap<String, Object> parameters;
-		//Operator crossover; // Crossover operator
-		//Operator selection; // Selection operator
-
-		algorithm.setInputParameter("populationSize", spec.population);
+		boolean level2 = true;
 		
-		problem.setPopulationSize(spec.population);
 
-		Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
+		if(level2) {
+			Level2ModelSearchProblem problem = new Level2ModelSearchProblem(ext, ts.output, datasets, dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues);
+			int threads = 4 ; // 0 - use all the available cores
+		    IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
+			
+			algorithm = new pgGA(problem, evaluator);
+			
+			HashMap<String, Object>  parameters;
+			Operator  crossover ;         // Crossover operator
+			Operator  mutation  ;         // Mutation operator
+			Operator  selection ;         // Selection operator
+			
+			//Test parameters
+			algorithm.setInputParameter("populationSize", problem.getNumberOfVariables()*2);
+		    algorithm.setInputParameter("maxEvaluations", problem.getNumberOfVariables()*2*100);
+			
+		    problem.setPopulationSize(problem.getNumberOfVariables()*10);
+		    // Mutation and Crossover for Real codification 
+		    parameters = new HashMap<String,Object>();
+		    parameters.put("probability", 0.9);		    
+		    crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);                   
 
-		algorithm.setInputParameter("maxEvaluations", max_evals);
-
-		MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
-		msf.setSeed(spec.seed);
-		PseudoRandom.setRandomGenerator(msf);
-
-		// Crossover operator
-		//parameters = new HashMap<String, Object>();
-		//parameters.put("CR", spec.Cr);
-		//parameters.put("F", spec.F);
-		//parameters.put("DE_VARIANT", spec.strategy.toString());
-
-		//crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
-
-		// Add the operators to the algorithm
-		//parameters = null;
-		//selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
-
-		//algorithm.addOperator("crossover", crossover);
-		//algorithm.addOperator("selection", selection);
-
-		// Execute the optimization
-		algorithm.execute();
-
+		    parameters = new HashMap<String, Object>() ;
+		    parameters.put("probability", 1.0/problem.getNumberOfVariables()) ;
+		    mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
+		    
+		    /* Selection Operator */
+		    parameters = null ;
+		    selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters) ;                            
+		    
+		    /* Add the operators to the algorithm*/
+		    algorithm.addOperator("crossover",crossover);
+		    algorithm.addOperator("mutation",mutation);
+		    algorithm.addOperator("selection",selection);
+			
+		    algorithm.execute();
+		    plateau = problem.getPlateau();
+		} else {
+			ModelSearchProblem problem = new ModelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
+			
+			algorithm = new CMAES(problem);
+			//algorithm = new DE(problem);
+	
+			//HashMap<String, Object> parameters;
+			//Operator crossover; // Crossover operator
+			//Operator selection; // Selection operator
+	
+			algorithm.setInputParameter("populationSize", spec.population);
+			
+			problem.setPopulationSize(spec.population);
+	
+			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
+	
+			algorithm.setInputParameter("maxEvaluations", max_evals);
+	
+			MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
+			msf.setSeed(spec.seed);
+			PseudoRandom.setRandomGenerator(msf);
+	
+			// Crossover operator
+			//parameters = new HashMap<String, Object>();
+			//parameters.put("CR", spec.Cr);
+			//parameters.put("F", spec.F);
+			//parameters.put("DE_VARIANT", spec.strategy.toString());
+	
+			//crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
+	
+			// Add the operators to the algorithm
+			//parameters = null;
+			//selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
+	
+			//algorithm.addOperator("crossover", crossover);
+			//algorithm.addOperator("selection", selection);
+	
+			// Execute the optimization
+			algorithm.execute();
+			plateau = problem.getPlateau();
+		}
 		
 		//Write output
 		
-		ArrayList<ExtendedModel> plateau = problem.getPlateau();
+		
 		
 		int counter = 1;
 		for (ExtendedModel model : plateau) {

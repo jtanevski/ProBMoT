@@ -326,12 +326,12 @@ public class ModelSearchProblem extends Problem {
 			}
 		}
 		
-		if (count % 1000 == 0) {
-			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
+		if (count % 100 == 0) {
+			Task.logger.debug("Structure evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
 		}
 		
 		if (count % populationSize == 0 ){
-			logger.info("Evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
+			logger.info("Structure evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
 		}
 
 		count++;

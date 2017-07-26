@@ -113,7 +113,6 @@ public class IC extends Instance {
 		buf.append(this.id + " = " + ((this.value == null) ? 0 : this.value));
 		
 		return buf.toString();
-
 	}
 
 

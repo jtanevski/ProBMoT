@@ -367,8 +367,8 @@ public class ObjectiveProblem extends Problem {
 			} catch (FailedSimulationException ex) {
 				solution.setObjective(0, Double.POSITIVE_INFINITY);
 				failed = true;
-				Task.logger.debug("Evaluation " + count
-						+ " failed. Assuming infinite error.");
+				//Task.logger.debug("Evaluation " + count
+				//		+ " failed. Assuming infinite error.");
 				break;
 			}
 		}
