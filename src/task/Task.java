@@ -11,6 +11,7 @@ import java.util.logging.SimpleFormatter;
 import javax.xml.bind.*;
 
 import jmetal.core.*;
+import jmetal.metaheuristics.singleObjective.cmaes.CMAES;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.*;
 import jmetal.operators.crossover.*;
 import jmetal.operators.selection.*;
@@ -840,13 +841,15 @@ public class Task {
 		ModelSearchProblem problem = new ModelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
 
 
-		algorithm = new DE(problem);
+		algorithm = new CMAES(problem);
+		//algorithm = new DE(problem);
 
-		HashMap<String, Object> parameters;
-		Operator crossover; // Crossover operator
-		Operator selection; // Selection operator
+		//HashMap<String, Object> parameters;
+		//Operator crossover; // Crossover operator
+		//Operator selection; // Selection operator
 
 		algorithm.setInputParameter("populationSize", spec.population);
+		
 		problem.setPopulationSize(spec.population);
 
 		Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
@@ -858,19 +861,19 @@ public class Task {
 		PseudoRandom.setRandomGenerator(msf);
 
 		// Crossover operator
-		parameters = new HashMap<String, Object>();
-		parameters.put("CR", spec.Cr);
-		parameters.put("F", spec.F);
-		parameters.put("DE_VARIANT", spec.strategy.toString());
+		//parameters = new HashMap<String, Object>();
+		//parameters.put("CR", spec.Cr);
+		//parameters.put("F", spec.F);
+		//parameters.put("DE_VARIANT", spec.strategy.toString());
 
-		crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
+		//crossover = CrossoverFactory.getCrossoverOperator("DifferentialEvolutionCrossover", parameters);
 
 		// Add the operators to the algorithm
-		parameters = null;
-		selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
+		//parameters = null;
+		//selection = SelectionFactory.getSelectionOperator("DifferentialEvolutionSelection", parameters);
 
-		algorithm.addOperator("crossover", crossover);
-		algorithm.addOperator("selection", selection);
+		//algorithm.addOperator("crossover", crossover);
+		//algorithm.addOperator("selection", selection);
 
 		// Execute the optimization
 		algorithm.execute();

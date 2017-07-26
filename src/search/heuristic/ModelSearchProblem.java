@@ -33,6 +33,7 @@ import xml.OutputSpec;
 import jmetal.core.Problem;
 import jmetal.core.Solution;
 import jmetal.core.Variable;
+import jmetal.encodings.solutionType.IntRealSolutionType;
 import jmetal.encodings.solutionType.RealSolutionType;
 import jmetal.util.JMException;
 import task.Task;
@@ -42,7 +43,7 @@ import task.Task;
 //This version is unable to handle mixed integer problems
 public class ModelSearchProblem extends Problem {
 
-	protected GeneticCodec codec;
+	protected HeuristicCodec codec;
 	private List<Dataset> datasets;
 	private OutputSpec outputSpec;
 	private BiMap<String, String> dimsToCols;
@@ -103,6 +104,7 @@ public class ModelSearchProblem extends Problem {
 		numberOfVariables_ = cLength + iLength + pLength + oLength;
 		
 		
+		
 		//Limits and ordering
 		lowerLimit_ = new double[numberOfVariables_];
 		upperLimit_ = new double[numberOfVariables_];
@@ -152,8 +154,8 @@ public class ModelSearchProblem extends Problem {
 		
 		problemName_ = extendedModel.getModel().id; //Name of the incomplete model
 		
-		//solutionType_ = new ModelSolution(this); //Mixed integer solution
-		solutionType_ = new RealSolutionType(this);
+		//Mixed integer solution
+		solutionType_ = new IntRealSolutionType(this, cLength, iLength + pLength + oLength);
 		
 		plateau = new TreeSet<PlateauModel>();
 		
@@ -285,15 +287,16 @@ public class ModelSearchProblem extends Problem {
 		} else {
 			//Regularize the objective function!
 			//using number of parameters
-			double comp = output.graph.reachParameters.size()/codec.internalEnumeratingCodec.pCompHigh;
+			double comp = (output.graph.reachParameters.size() - codec.internalEnumeratingCodec.pCompLow)/(codec.internalEnumeratingCodec.pCompHigh - codec.internalEnumeratingCodec.pCompLow);
 			
 			//using number of fragments
-//			double comp = 0;
-//			for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-//			comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
+			//double comp = 0;
+			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+			//comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
 			
 			error /= (outputData.getNCols()-1)*datasets.size();
-			error = (error+comp)/2;
+			double lambda = 0.9;
+			error = lambda*error+(1-lambda)*comp;
 			
 			solution.setObjective(0, error);
 			phenotype.getFitnessMeasures().put(objFunction.getName(), error);
@@ -324,11 +327,11 @@ public class ModelSearchProblem extends Problem {
 		}
 		
 		if (count % 1000 == 0) {
-			Task.logger.debug("Evaluation: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
+			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
 		}
 		
 		if (count % populationSize == 0 ){
-			logger.info(Double.toString(minerror));
+			logger.info("Evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
 		}
 
 		count++;

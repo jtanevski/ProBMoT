@@ -15,7 +15,7 @@ import jmetal.encodings.variable.Real;
 public class ModelSolution extends SolutionType {
 
 	
-	private GeneticCodec codec;
+	private HeuristicCodec codec;
 	
 	public ModelSolution(Problem problem) {
 		super(problem);

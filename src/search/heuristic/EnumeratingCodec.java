@@ -9,9 +9,12 @@ import jmetal.util.JMException;
 
 import org.antlr.runtime.RecognitionException;
 import org.apache.commons.configuration.ConfigurationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import search.ModelEnumerator;
 import struct.Interval;
+import task.Task;
 import temp.ExtendedModel;
 import temp.IQGraph;
 import temp.IVNode;
@@ -30,22 +33,25 @@ import temp.ICNode;
  */
 
 
-public class EnumeratingCodec implements HeuristicCodec {
+public class EnumeratingCodec extends HeuristicCodec {
 
-	private ExtendedModel extendedModel = null;
 	private ModelEnumerator search;
-	protected LinkedList<Integer> code = null;
 	protected ListMap<String,ICNode> params;
 	protected ListMap<String,IVNode> initials;
 	protected ListMap<String,OutputCons> outputs;
 	protected double pCompLow, pCompHigh, fCompLow, fCompHigh;
 	
+	public static final Logger logger = LoggerFactory.getLogger(EnumeratingCodec.class);
 
-	public EnumeratingCodec() {}
+	public EnumeratingCodec() {
+		extendedModel = null;
+		code = null; 
+		internalEnumeratingCodec = this;
+	}
 
 	@Override
 	public LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec) {
-		System.out.println("Encoding. This may take a while.");
+		logger.info("Enumerating. This may take a while.");
 		this.extendedModel = extendedModel.copy();
 		search = new ModelEnumerator(extendedModel);
 		int counter = 0;
@@ -107,6 +113,8 @@ public class EnumeratingCodec implements HeuristicCodec {
 			
 				//Take care of the number of models
 				counter++;
+				
+				if(counter%10000 == 0) System.out.print(counter + " ");
 			}
 			
 
@@ -115,9 +123,9 @@ public class EnumeratingCodec implements HeuristicCodec {
 				| RecognitionException e) {
 			System.out.println("Coding error.");
 		}
+		logger.info("\nEnumerated " + counter + " candidate models.");
+		logger.info("Encoding");
 		code.add(counter);
-		
-		System.out.println("Enumerated " + counter + " candidate models.");
 		return code;
 
 	}

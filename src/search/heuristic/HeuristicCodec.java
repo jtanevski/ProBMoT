@@ -5,7 +5,10 @@ import temp.ExtendedModel;
 import xml.OutputSpec;
 import jmetal.core.Variable;
 
-interface HeuristicCodec {
-	public LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec);
-	public ExtendedModel decode(Variable[] genotype);
+public abstract class HeuristicCodec {
+	protected ExtendedModel extendedModel;
+	protected LinkedList<Integer> code;
+	protected EnumeratingCodec internalEnumeratingCodec;
+	public abstract LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec);
+	public abstract ExtendedModel decode(Variable[] genotype);
 }
