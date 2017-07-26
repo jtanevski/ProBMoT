@@ -110,7 +110,7 @@ public class IC extends Instance {
 	
 	public String toString() {
 		StringBuilder buf = new StringBuilder();
-		buf.append(this.id + " = " + this.value);
+		buf.append(this.id + " = " + ((this.value == null) ? 0 : this.value));
 		
 		return buf.toString();
 

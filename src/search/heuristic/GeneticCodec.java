@@ -96,60 +96,71 @@ public class GeneticCodec extends HeuristicCodec {
 
 	private IPDescription geneSeek(ExtendedModel em, IPRecursiveRefiner ipr) {
 		IPDescription result = new IPDescription();
-		
+
 		int alts = ipr.state.getCount();
-		result.longCode.add(alts); //this process has alts alternatives. has to be at least one
+		result.longCode.add(alts); // this process has alts alternatives. has to be at least one
 
 		LinkedList<Integer> nextLevelMax = new LinkedList<Integer>();
 		LinkedList<Integer> nextLevelRepMax = new LinkedList<Integer>();
-		
-		//size of additional integers needed for representation on each level is equal to the maximal number of refiners present in the refinements
+
+		// size of additional integers needed for representation on each level is equal
+		// to the maximal number of refiners present in the refinements
 		if (!ipr.state.hasNextState()) { // if there is only one alternative
 			result.longCodeRep.add(ipr.refiners.size()); // it must have exactly this many subprocesses
-			for (IPRecursiveRefiner ipr2 : ipr.refiners.valueList()) { //and these are the subprocess representations
+			for (IPRecursiveRefiner ipr2 : ipr.refiners.valueList()) { // and these are the subprocess representations
 				IPDescription ll1 = geneSeek(em, ipr2);
 				result.longCode.addAll(ll1.longCode);
 				result.longCodeRep.addAll(ll1.longCodeRep);
 			}
 		} else { // there is more than one alternative
-			int maxsubp = 0; //each of the alternatives can have different number of subprocesses
-			//ipr.firstState();
-			while(ipr.state.hasNextState()){ 
-			ipr.nextStateSelf(); //refine self
-			if (ipr.refiners.size() > maxsubp) maxsubp = ipr.refiners.size();
-							
-			for(IPRecursiveRefiner ipr2 : ipr.refiners.valueList()){ 
-				IPDescription ll1 = geneSeek(em, ipr2);
-				//Aggregation: compare to this level max and maximize, subprocesses may contain different number of subprocesses of their own and different number of alternatives for each subprocess
-				if(nextLevelMax.size() == 0){
-					nextLevelMax.addAll(ll1.longCode);
-				} else {
-					for(int i=0; i< Math.min(nextLevelMax.size(), ll1.longCode.size()); i++){
-						nextLevelMax.set(i, Math.max(nextLevelMax.get(i), ll1.longCode.get(i)));
-					}
-					if(nextLevelMax.size() < ll1.longCode.size()){
-						nextLevelMax.addAll(ll1.longCode.subList(nextLevelMax.size(), ll1.longCode.size()));
-					}
+			int maxsubp = 0; // each of the alternatives can have different number of subprocesses
+			// ipr.firstState();
+			while (ipr.state.hasNextState()) {
+				ipr.nextStateSelf(); // refine self
+				if (ipr.refiners.size() > maxsubp)
+					maxsubp = ipr.refiners.size();
+				LinkedList<Integer> currentLong = new LinkedList<Integer>();
+				LinkedList<Integer> currentRep = new LinkedList<Integer>();
+				
+				// Aggregation: compare to this level max and maximize, subprocesses may contain
+				// different number of subprocesses of their own and different number of
+				// alternatives for each subprocess
+				
+				for (IPRecursiveRefiner ipr2 : ipr.refiners.valueList()) { //for each subprocess 
+					IPDescription ll1 = geneSeek(em, ipr2);
+					currentLong.addAll(ll1.longCode);
+					currentRep.addAll(ll1.longCodeRep);
 				}
 				
-				if(nextLevelRepMax.size() == 0){
-					nextLevelRepMax.addAll(ll1.longCodeRep);
+				//maximize here
+				//Check! Possible bugs 
+				if (nextLevelMax.size() == 0) {
+					nextLevelMax.addAll(currentLong);
 				} else {
-					for(int i=0; i< Math.min(nextLevelRepMax.size(), ll1.longCodeRep.size()); i++){
-						nextLevelRepMax.set(i, Math.max(nextLevelRepMax.get(i), ll1.longCodeRep.get(i)));
+					for (int i = 0; i < Math.min(nextLevelMax.size(), currentLong.size()); i++) {
+						nextLevelMax.set(i, Math.max(nextLevelMax.get(i), currentLong.get(i)));
 					}
-					if(nextLevelRepMax.size() < ll1.longCodeRep.size()){
-						nextLevelRepMax.addAll(ll1.longCodeRep.subList(nextLevelRepMax.size(), ll1.longCodeRep.size()));
-					}
+					if (nextLevelMax.size() < currentLong.size()) {
+						nextLevelMax.addAll(currentLong.subList(nextLevelMax.size(), currentLong.size()));
+					}	
 				}
 				
+				if (nextLevelRepMax.size() == 0) {
+					nextLevelRepMax.addAll(currentRep);
+				} else {
+					for (int i = 0; i < Math.min(nextLevelRepMax.size(), currentRep.size()); i++) {
+						nextLevelRepMax.set(i, Math.max(nextLevelRepMax.get(i), currentRep.get(i)));
+					}
+					if (nextLevelRepMax.size() < currentRep.size()) {
+						nextLevelRepMax.addAll(currentRep.subList(nextLevelRepMax.size(), currentRep.size()));
+					}
+				}
 			}
+			result.longCode.addAll(nextLevelMax);
+			result.longCodeRep.add(maxsubp);
+			result.longCodeRep.addAll(nextLevelRepMax);
 		}
-		result.longCode.addAll(nextLevelMax);
-		result.longCodeRep.add(maxsubp);
-		result.longCodeRep.addAll(nextLevelRepMax);
-	}
-		
+
 		return result;
 	}
 	

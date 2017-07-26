@@ -287,7 +287,7 @@ public class ModelSearchProblem extends Problem {
 		} else {
 			//Regularize the objective function!
 			//using number of parameters
-			double comp = (output.graph.reachParameters.size() - codec.internalEnumeratingCodec.pCompLow)/(codec.internalEnumeratingCodec.pCompHigh - codec.internalEnumeratingCodec.pCompLow);
+			double comp = (output.graph.reachParameters.size())/(codec.internalEnumeratingCodec.pCompHigh);
 			
 			//using number of fragments
 			//double comp = 0;
@@ -295,7 +295,7 @@ public class ModelSearchProblem extends Problem {
 			//comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
 			
 			error /= (outputData.getNCols()-1)*datasets.size();
-			double lambda = 0.9;
+			double lambda = 0.5;
 			error = lambda*error+(1-lambda)*comp;
 			
 			solution.setObjective(0, error);
