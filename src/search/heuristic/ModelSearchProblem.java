@@ -71,7 +71,7 @@ class ModelSearchProblem extends Problem {
 	public ModelSearchProblem(ExtendedModel incompleteModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
-			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec) {
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
 		// things needed by the evaluation function
 		this.datasets = datasets;
 		this.outputSpec = outputSpec;
@@ -88,6 +88,7 @@ class ModelSearchProblem extends Problem {
 		
 		// Take care of the integer part of the problem
 		codec = new GeneticCodec();
+		codec.enumerate = enumerate;
 		codec.encode(incompleteModel, outputSpec);
 		
 		problemName_ = incompleteModel.getModel().id; // Name of the incomplete model
@@ -211,7 +212,4 @@ class ModelSearchProblem extends Problem {
 		this.populationSize = populationSize;
 	}
 	
-	public void setEnumerate(boolean enumerate) {
-		codec.enumerate = enumerate;
-	}
 }

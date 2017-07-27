@@ -52,9 +52,9 @@ public class SingleLevelSearchProblem extends ModelSearchProblem {
 	
 	public SingleLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, TrajectoryObjectiveFunction objFunction, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols,
-			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec) {
+			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
 		
-		super(extendedModel,outputSpec,datasets,dimsToCols, null, exosToCols, outsToCols, null, spec, null, initialValuesSpec);
+		super(extendedModel,outputSpec,datasets,dimsToCols, null, exosToCols, outsToCols, null, spec, null, initialValuesSpec, enumerate);
 		
 		//things needed by the evaluation function
 		cLength = codec.code.size();

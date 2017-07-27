@@ -53,9 +53,9 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	public TwoLevelBeamSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
-			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec) {
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
 
-		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec);
+		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, enumerate);
 		
 		cLength = codec.code.size();
 

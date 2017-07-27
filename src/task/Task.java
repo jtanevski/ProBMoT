@@ -853,17 +853,18 @@ public class Task {
 
 		//Default is two level genetic
 		boolean level2 = true;
-		boolean beam = false;
+		boolean beam = true;
 		
 
 		if(level2) {
 			if (beam) {
+				//enumerate false for huge problems
 				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets, dimsToCols,
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues);
+						ts.settings.fitter, ts.settings.initialvalues, false);
 				
 				//For huge problems
-				//beamsearch.setEnumerate(false);
+				
 				
 				beamsearch.setbeamWidth(3);
 				
@@ -876,7 +877,7 @@ public class Task {
 
 				TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues);
+						ts.settings.fitter, ts.settings.initialvalues, true);
 				int threads = 4; // 0 - use all the available cores
 				IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
 
@@ -916,7 +917,7 @@ public class Task {
 				plateau = problem.getPlateau();
 			}
 		} else {
-			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues);
+			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues, true);
 			
 			algorithm = new CMAES(problem);
 
