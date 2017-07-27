@@ -28,11 +28,7 @@ import xml.OutputSpec;
  */
 
 
-//TODO: Maybe the parameters of the incomplete model should also be part of the code
-//what about the output parameters? see VariableSuperSet
-//Just use VariableSuperSet and actually go trough all models to find out all unknown parameters
-//The signature for the encode function should include OutputSpec. The output should be generalized to list of Number that includes Integer and Double?
-public class GeneticCodec extends HeuristicCodec {
+class GeneticCodec extends HeuristicCodec {
 
 	private LinkedList<Integer> longCode;
 	private LinkedList<Integer> longCodeRep;
@@ -47,6 +43,8 @@ public class GeneticCodec extends HeuristicCodec {
 		internalEnumeratingCodec = null;
 	}
 	
+	
+	//TODO: Overload with parameter for enumeration avoidance to use in level2 and beam problems for huge problems.
 	@Override
 	public LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec) {
 
@@ -85,11 +83,8 @@ public class GeneticCodec extends HeuristicCodec {
 			}
 		}
 		
-		if(total != internalEnumeratingCodec.code.get(0)) System.out.println("WARNING: Encoding contains spurious models due to the presence of unbalanced number of subprocesses in the incomplete model. There is bias towards selecting alternative processes with maximal depth.");
+		if(total != internalEnumeratingCodec.code.get(0)) logger.warn("Encoding contains spurious models due to the presence of unbalanced number of subprocesses in the incomplete model. There is bias towards selecting alternative processes with maximal depth.");
 		
-		//System.out.println(code);
-		//System.out.println(longCode);
-		//System.out.println(longCodeRep);
 		return code;
 
 	}
@@ -114,7 +109,7 @@ public class GeneticCodec extends HeuristicCodec {
 			}
 		} else { // there is more than one alternative
 			int maxsubp = 0; // each of the alternatives can have different number of subprocesses
-			// ipr.firstState();
+
 			while (ipr.state.hasNextState()) {
 				ipr.nextStateSelf(); // refine self
 				if (ipr.refiners.size() > maxsubp)
@@ -214,13 +209,13 @@ public class GeneticCodec extends HeuristicCodec {
 		LinkedList<Integer> lcR = new LinkedList<Integer>();
 		lcR.addAll(longCodeRep);
 		LinkedList<Integer> geneCodeRep = getTopGene(lcR);
-//		int offset=0;	
+
 		//passing trough in the same way as in the encoding
 		for (IP ip : topLevelIPs) {
 			IPRecursiveRefiner ipr = new IPRecursiveRefiner(extendedModel, ip, false);
 			LinkedList<Integer> geneCode = new LinkedList<Integer>(longGenotype.subList(0, geneCodeRep.size()));
 			setIPRefiners(ipr,geneCode,geneCodeRep);
-//			offset+=geneCodeRep.size();
+
 			longGenotype = new LinkedList<Integer>(longGenotype.subList(geneCode.size(), longGenotype.size()));
 			lcR = new LinkedList<Integer>(lcR.subList(geneCodeRep.size(), lcR.size()));
 			if(lcR.size() > 0) geneCodeRep = getTopGene(lcR);

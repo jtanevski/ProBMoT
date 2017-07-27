@@ -22,8 +22,6 @@ import fit.compile.ModelCompiler;
 import fit.jvode.bridj.nvector.*;
 import fit.jvode.bridj.sundials.*;
 import search.ModelEnumerator;
-import search.heuristic.EnumeratingCodec;
-import search.heuristic.GeneticCodec;
 import serialize.CSerializer;
 import struct.inst.IncompleteModel;
 import struct.inst.Model;
@@ -80,8 +78,8 @@ public class Test {
 //			e.printStackTrace();
 //		}
 //		
-		GeneticCodec ec = new GeneticCodec();
-		System.out.println(ec.encode(new ExtendedModel(model.copy()), new OutputSpec()));
+		//GeneticCodec ec = new GeneticCodec();
+		//System.out.println(ec.encode(new ExtendedModel(model.copy()), new OutputSpec()));
 	
 		
 		//consistency

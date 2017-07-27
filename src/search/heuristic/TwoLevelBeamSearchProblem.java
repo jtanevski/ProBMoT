@@ -1,110 +1,62 @@
 package search.heuristic;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.logging.Logger;
 
 import org.antlr.runtime.RecognitionException;
-import org.apache.commons.lang3.ArrayUtils;
 
 import com.google.common.collect.BiMap;
 
-import fit.CVodeSimulator;
-import fit.LinearSolver;
 import fit.MersenneTwisterFastFix;
-import fit.NonlinearSolver;
-import fit.ODEModel;
-import fit.ODESolver;
-import fit.OutputModel;
 import fit.objective.ObjectiveProblem;
 import fit.objective.RMSEMultiDataset;
 import fit.objective.TrajectoryObjectiveFunction;
 import jmetal.core.Algorithm;
 import jmetal.core.Operator;
-import jmetal.core.Problem;
-import jmetal.core.Solution;
 import jmetal.core.SolutionSet;
 import jmetal.core.Variable;
-import jmetal.encodings.solutionType.IntSolutionType;
+import jmetal.encodings.variable.Int;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.DE;
 import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.selection.SelectionFactory;
 import jmetal.util.JMException;
 import jmetal.util.PseudoRandom;
-import struct.inst.IV;
-import struct.inst.Model;
 import task.Task;
 import temp.Dataset;
 import temp.ExtendedModel;
 import temp.IQGraph;
 import temp.Output;
 import util.FailedSimulationException;
+import util.ListMap;
 import xml.CVODESpec;
 import xml.DESpec;
 import xml.FitterSpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
 
-public class Level2ModelSearchProblem extends Problem {
-
-	protected HeuristicCodec codec;
-	private List<Dataset> datasets;
-	private OutputSpec outputSpec;
-	private BiMap<String, String> dimsToCols;
-	private BiMap<String, String> endosToCols;
-	private BiMap<String, String> exosToCols;
-	private BiMap<String, String> outsToCols;
-	private BiMap<String, String> weightsToCols;
-
-	ArrayList<CVodeSimulator> simulators;
-	ArrayList<ODEModel> odeModels;
-	ArrayList<OutputModel> outputModels;
-
-	private CVODESpec spec;
-	private FitterSpec fitterSpec;
-	// private CVodeSimulator simulator;
-	private InitialValuesSpec initialValuesSpec;
-
+public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
+	
 	private int cLength;
-
-	// private Dataset simulation, outputData;
-	public TrajectoryObjectiveFunction objFunction;
-
-	private int count = 1;
-	Logger logger = Logger.getLogger("fitPerformance");
-	private double minerror = Double.POSITIVE_INFINITY;
-	private int populationSize;
-
-	private TreeSet<PlateauModel> plateau;
-	HashMap<PlateauModel, Double> seen;
-
-	public Level2ModelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
+	private int beamWidth;
+	
+	private TreeSet<VariableArray> seen;
+	
+	
+	//TODO: Might be buggy. Is the pruning sufficient?
+	public TwoLevelBeamSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
 			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec) {
 
-		// things needed by the evaluation function
-		this.datasets = datasets;
-		this.outputSpec = outputSpec;
-		this.dimsToCols = dimsToCols;
-		this.endosToCols = endosToCols;
-		this.exosToCols = exosToCols;
-		this.outsToCols = outsToCols;
-		this.weightsToCols = weightsToCols;
-		this.fitterSpec = fitterSpec;
-		this.spec = spec;
-		this.initialValuesSpec = initialValuesSpec;
-
-		// Take care of the integer part of the problem
-		codec = new GeneticCodec();
-		codec.encode(extendedModel, outputSpec);
-
+		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec);
+		
 		cLength = codec.code.size();
 
 		numberOfVariables_ = cLength;
@@ -118,39 +70,104 @@ public class Level2ModelSearchProblem extends Problem {
 			lowerLimit_[i] = 1;
 			upperLimit_[i] = codec.code.get(i);
 		}
+		
+		//default beam width
+		beamWidth = cLength;
 
-		this.numberOfConstraints_ = 0; // No constraints
-		this.numberOfObjectives_ = 1; // Single-objective optimization
-
-		problemName_ = extendedModel.getModel().id; // Name of the incomplete model
-
-		// Integer solution
-		solutionType_ = new IntSolutionType(this);
-
-		plateau = new TreeSet<PlateauModel>();
-		seen = new HashMap<PlateauModel, Double>();
-
+		seen = new TreeSet<VariableArray>();
+		
 	}
+	
+	public void execute() throws JMException{
+		//generate random solution
+		Variable[] initialState = new Variable[numberOfVariables_];
+		
+		//the initial solution is used to generate a set of neighbors to be considered at the start of the search. not seen.
+		for(int i=0; i<numberOfVariables_; i++) {
+			initialState[i] = new Int(PseudoRandom.randInt((int)lowerLimit_[i], (int)upperLimit_[i]),(int)lowerLimit_[i], (int)upperLimit_[i]);
+		}
+		
+		LinkedList<Variable[]> initialList = new LinkedList<Variable[]>();
+		initialList.add(initialState);
+		
+		search_step(initialList);
+		
+	}
+	
+	private void search_step(LinkedList<Variable[]> states) throws JMException {
+		
+		Map<Variable[], Double> beam = new ListMap<Variable[], Double>();
+		
+		//breadth first
+		for(Variable[] state: states) {
+			LinkedList<Variable[]> neighbors = generateNeighbors(state);
+			
+			for(Variable[] model : neighbors) {
+				Double heuristic = evaluate(model);
+				beam.put(model, heuristic);
+			}
+		}
+		
+		//stop criterion
+		if(beam.size() == 0) return;
+		
+		beam = sortByValue(beam);
+		
+		LinkedList<Variable[]> nextStep = new LinkedList<Variable[]>();
 
-	@Override
-	public void evaluate(Solution solution) throws JMException {
-		Variable[] structure = solution.getDecisionVariables();
+		int c=0;
+		for(Variable[] candidate : beam.keySet()){
+			nextStep.add(candidate);
+			if((++c)>=beamWidth) break;
+		}
+		
+		search_step(nextStep);
+		
+	}
+	
+	//refinement operator
+	//we define immediate neighbors as genotypes with manhattan distance 1
+	private LinkedList<Variable[]> generateNeighbors(Variable[] state) throws JMException {
+		LinkedList<Variable[]> neighbors = new LinkedList<Variable[]>();
+		
+		for(int i=0; i<state.length; i++) {
+			Variable v = state[i];
+			if((v.getValue()-1) >= v.getLowerBound()) {
+				Variable[] neighbor = Arrays.copyOf(state, state.length);
+				neighbor[i] = new Int((int)v.getValue()-1, (int)v.getLowerBound(), (int)v.getUpperBound());
+				
+				VariableArray vaCandidate = new VariableArray(neighbor);
+				if(!seen.contains(vaCandidate)) {
+					neighbors.add(neighbor);
+					seen.add(vaCandidate);
+				}
+			}
+			 
+			if((v.getValue()+1) <= v.getUpperBound()) {
+				Variable[] neighbor = Arrays.copyOf(state, state.length);
+				neighbor[i] = new Int((int)v.getValue()+1, (int)v.getLowerBound(), (int)v.getUpperBound());
+				
+				VariableArray vaCandidate = new VariableArray(neighbor);
+				if(!seen.contains(vaCandidate)) {
+					neighbors.add(neighbor);
+					seen.add(vaCandidate);
+				}
+			}
+		}
+		
+		return neighbors;
+	}
+	
+	public double evaluate(Variable[] structure) throws JMException {
+		
 		ExtendedModel model = codec.decode(structure);
 		boolean failed = false;
 
-		// Careful! The seen map should not be sorted because the fitness of the empty
-		// extendedmodel is null. It can be used to efficiently store seen structures
-		// only.
-		PlateauModel isSeen = new PlateauModel(structure, model);
-		if (seen.containsKey(isSeen)) {
-			solution.setObjective(0, seen.get(isSeen));
-			return;
-		} else {
-			seen.put(isSeen, Double.POSITIVE_INFINITY);
-		}
-
 		Output output = null;
 		Double error = 0.0;
+		
+		Double toReturn = null;
+		
 		try {
 
 			IQGraph graph = new IQGraph(model.getModel());
@@ -192,10 +209,6 @@ public class Level2ModelSearchProblem extends Problem {
 			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
 
 			algorithm.setInputParameter("maxEvaluations", max_evals);
-
-			MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
-			msf.setSeed(spec.seed);
-			PseudoRandom.setRandomGenerator(msf);
 
 			// Crossover operator
 			parameters = new HashMap<String, Object>();
@@ -262,7 +275,7 @@ public class Level2ModelSearchProblem extends Problem {
 		}
 
 		if (failed) {
-			solution.setObjective(0, Double.POSITIVE_INFINITY);
+			toReturn = Double.POSITIVE_INFINITY;
 		} else {
 			// Regularize the objective function!
 			// using number of parameters
@@ -279,8 +292,7 @@ public class Level2ModelSearchProblem extends Problem {
 			double lambda = 0.5;
 			error = lambda * error + (1 - lambda) * comp;
 
-			solution.setObjective(0, error);
-			seen.replace(isSeen, error);
+			toReturn = error;
 
 			// keep only the best set of parameter values for each structure
 			PlateauModel cModel = new PlateauModel(structure, model);
@@ -313,106 +325,48 @@ public class Level2ModelSearchProblem extends Problem {
 					+ " models in the plateau");
 		}
 
-		if (count % populationSize == 0) {
+		if (count % beamWidth == 0) {
 			logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
 					+ " models in the plateau");
 		}
 
 		count++;
-
-	}
-
-	// Copied and modified from task
-	private List<Dataset> simulateModel(ExtendedModel em, List<Dataset> datasets)
-			throws InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException,
-			FailedSimulationException, IOException {
-
-		Model model = em.getModel();
-
-		List<Dataset> outputDatas = new ArrayList<Dataset>();
-
-		try {
-			for (int i = 0; i < datasets.size(); i++) {
-
-				for (String name : model.allVars.keySet()) {
-					IV var = model.allVars.get(name);
-					if (initialValuesSpec.usedatasetvalues) {
-						String dsColName = endosToCols.get(name);
-						if (dsColName != null) {
-							var.initial = datasets.get(i).getElem(0, dsColName);
-							model.allVars.put(name, var);
-						}
-					}
-				}
-
-				IQGraph graph = new IQGraph(model);
-				Output output = new Output(outputSpec, graph);
-
-				ODEModel odeModel = new ODEModel(graph, datasets, dimsToCols, exosToCols, i);
-				CVodeSimulator simulator = new CVodeSimulator(ODESolver.BDF, NonlinearSolver.NEWTON);
-				simulator.initialize(odeModel);
-				simulator.setTolerances(spec.reltol, spec.abstol);
-				simulator.setLinearSolver(LinearSolver.SPGMR);
-				simulator.setMaxNumSteps(spec.steps);
-
-				Dataset simulation = simulator.simulate();
-
-				OutputModel outputModel = new OutputModel(output, datasets, simulation, dimsToCols, exosToCols,
-						outsToCols, i);
-
-				Double[] outputs = new Double[em.getOutputConstants().values().size()];
-				em.getOutputConstants().values().toArray(outputs);
-				outputModel.setOutputParameters(ArrayUtils.toPrimitive(outputs));
-
-				outputDatas.add(outputModel.compute());
-
-			}
-			return outputDatas;
-		} catch (FailedSimulationException e) {
-			System.out.println("Simulation error: " + e.getMessage());
-			return null;
-		}
-
-	}
-
-	// copied from ModelSearchProblem
-	private void filterPlateau() {
-
-		Iterator<PlateauModel> pIterator = plateau.iterator();
-		PlateauModel best = pIterator.next();
-		while (pIterator.hasNext()) {
-			PlateauModel next = pIterator.next();
-			Double bestVal = best.eModel.getFitnessMeasures().get(objFunction.getName());
-			Double nextVal = next.eModel.getFitnessMeasures().get(objFunction.getName());
-			if (bestVal * 1.1 < nextVal) {
-				break;
-			}
-			best = next;
-		}
-
-		// Create custom headview because treeset uses compareto instead of equals for
-		// this
-		TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
-		pIterator = plateau.iterator();
-		while (pIterator.hasNext()) {
-			PlateauModel p = pIterator.next();
-			plateau2.add(p);
-			if (p.equals(best))
-				break;
-		}
-
-		plateau = new TreeSet<PlateauModel>(plateau2);
-	}
-
-	public void setPopulationSize(int populationSize) {
-		this.populationSize = populationSize;
-	}
-
-	public ArrayList<ExtendedModel> getPlateau() {
-		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
-		for (PlateauModel p : plateau)
-			toReturn.add(p.eModel);
+		
 		return toReturn;
+
+	}
+
+	public void setbeamWidth(int beamWidth) {
+		this.beamWidth = beamWidth;
+	}
+	
+	
+	//Implemented due to the seen TreeSet
+	class VariableArray implements Comparable<VariableArray>{
+
+		Variable[] structure;
+		
+		public VariableArray(Variable[] structure) {
+			this.structure = structure;
+		}
+		
+		@Override
+		public boolean equals(Object v) {
+			return (this.compareTo((VariableArray)v) == 0);
+		}
+		
+		@Override
+		public int compareTo(VariableArray v) {
+			for(int i=0; i<v.structure.length; i++) {
+				try {
+					if(this.structure[i].getValue() < v.structure[i].getValue()) return -1;
+					if(this.structure[i].getValue() > v.structure[i].getValue()) return 1;
+				} catch (JMException e) {
+					return 1;
+				}
+			}
+			return 0;
+		}
 	}
 
 }

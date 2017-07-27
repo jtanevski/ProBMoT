@@ -2,13 +2,18 @@ package search.heuristic;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.antlr.runtime.RecognitionException;
+import org.apache.commons.lang3.ArrayUtils;
 
 import com.google.common.collect.BiMap;
 
@@ -19,339 +24,141 @@ import fit.ODEModel;
 import fit.ODESolver;
 import fit.OutputModel;
 import fit.objective.TrajectoryObjectiveFunction;
-import temp.Dataset;
-import temp.ExtendedModel;
-import temp.ICNode;
-import temp.IQGraph;
-import temp.IVNode;
-import temp.Output;
-import temp.OutputCons;
-import util.FailedSimulationException;
-import xml.CVODESpec;
-import xml.InitialValuesSpec;
-import xml.OutputSpec;
 import jmetal.core.Problem;
 import jmetal.core.Solution;
-import jmetal.core.Variable;
-import jmetal.encodings.solutionType.IntRealSolutionType;
-import jmetal.encodings.solutionType.RealSolutionType;
 import jmetal.util.JMException;
-import task.Task;
+import struct.inst.IV;
+import struct.inst.Model;
+import temp.Dataset;
+import temp.ExtendedModel;
+import temp.IQGraph;
+import temp.Output;
+import util.FailedSimulationException;
+import xml.CVODESpec;
+import xml.FitterSpec;
+import xml.InitialValuesSpec;
+import xml.OutputSpec;
 
-
-//TODO: Migrate to jMetal 5.0 and make it multi-threaded?
-//This version is unable to handle mixed integer problems
-public class ModelSearchProblem extends Problem {
-
+class ModelSearchProblem extends Problem {
+	
+	protected ExtendedModel extendedModel;
+	
 	protected HeuristicCodec codec;
-	private List<Dataset> datasets;
-	private OutputSpec outputSpec;
-	private BiMap<String, String> dimsToCols;
-	private BiMap<String, String> exosToCols;
-	private BiMap<String, String> outsToCols;
+	protected List<Dataset> datasets;
+	protected OutputSpec outputSpec;
+	protected BiMap<String, String> dimsToCols;
+	protected BiMap<String, String> endosToCols;
+	protected BiMap<String, String> exosToCols;
+	protected BiMap<String, String> outsToCols;
+	protected BiMap<String, String> weightsToCols;
+
+
+	protected CVODESpec spec;
+	protected FitterSpec fitterSpec;
+	protected InitialValuesSpec initialValuesSpec;
 	
-	ArrayList<CVodeSimulator> simulators;
-	ArrayList<ODEModel> odeModels;
-	ArrayList<OutputModel> outputModels;
+	protected int populationSize;
+
+	protected TrajectoryObjectiveFunction objFunction;
+
+	protected static int count = 1;
+	protected Logger logger = Logger.getLogger("fitPerformance");
+	protected double minerror = Double.POSITIVE_INFINITY;
 	
-	private CVODESpec spec;
-	private CVodeSimulator simulator;
-	private InitialValuesSpec initialValuesSpec;
 	
-	private int cLength, iLength, pLength, oLength;
-	
-	private Dataset simulation, outputData;
-	public TrajectoryObjectiveFunction objFunction;
-	
-	private int count = 1;
-	Logger logger = Logger.getLogger("fitPerformance");
-	private double minerror = Double.POSITIVE_INFINITY;
-	private int populationSize;
-	
-	private TreeSet<PlateauModel> plateau;
-	
-	//private TreeSet<ExtendedModel> plateau;
-	public ModelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, TrajectoryObjectiveFunction objFunction, List<Dataset> datasets,
-			BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols,
-			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec) {
-		
-		//things needed by the evaluation function
+	protected TreeSet<PlateauModel> plateau;
+
+	public ModelSearchProblem(ExtendedModel incompleteModel, OutputSpec outputSpec, List<Dataset> datasets,
+			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
+			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec) {
+		// things needed by the evaluation function
 		this.datasets = datasets;
 		this.outputSpec = outputSpec;
 		this.dimsToCols = dimsToCols;
+		this.endosToCols = endosToCols;
 		this.exosToCols = exosToCols;
 		this.outsToCols = outsToCols;
+		this.weightsToCols = weightsToCols;
+		this.fitterSpec = fitterSpec;
 		this.spec = spec;
 		this.initialValuesSpec = initialValuesSpec;
-		this.objFunction = objFunction;
 		
-		//Take care of the integer part of the problem
+		this.extendedModel = incompleteModel;
+		
+		// Take care of the integer part of the problem
 		codec = new GeneticCodec();
-		codec.encode(extendedModel, outputSpec);
+		codec.encode(incompleteModel, outputSpec);
 		
-		cLength = codec.code.size();
-		pLength = codec.internalEnumeratingCodec.params.size();
-		oLength = codec.internalEnumeratingCodec.outputs.size();
-		
-		//Take care of the real part of the problem
-		
-		if(initialValuesSpec.sameforalldatasets){
-			iLength = codec.internalEnumeratingCodec.initials.size();
-		} else {
-			iLength = codec.internalEnumeratingCodec.initials.size()*datasets.size();
-		}
-		
-		numberOfVariables_ = cLength + iLength + pLength + oLength;
-		
-		
-		
-		//Limits and ordering
-		lowerLimit_ = new double[numberOfVariables_];
-		upperLimit_ = new double[numberOfVariables_];
-		
-		//model variables
-		for(int i=0; i<cLength; i++) {
-			lowerLimit_[i] = 1;
-			upperLimit_[i] = codec.code.get(i);
-		}
-		
-		//TODO: currently ignoring values from dataset setting
-		//initial variables
-		int mult = 1;
-		if(!initialValuesSpec.sameforalldatasets){
-			mult = datasets.size();
-		}
-
-		int t = 0;
-		for (String s : codec.internalEnumeratingCodec.initials.keyList()) {
-			for(int j=0; j<mult; j++){
-				IVNode ivn = codec.internalEnumeratingCodec.initials.get(s);
-				lowerLimit_[cLength + t + codec.internalEnumeratingCodec.initials.size()*j] = ivn.var.range.getLower();
-				upperLimit_[cLength + t + codec.internalEnumeratingCodec.initials.size()*j] = ivn.var.range.getUpper();
-				t++;
-			}
-		}
-		
-		
-		//parameters
-		t=cLength + codec.internalEnumeratingCodec.initials.size()*mult;
-		for(String s : codec.internalEnumeratingCodec.params.keyList()) {
-			ICNode icn = codec.internalEnumeratingCodec.params.get(s);
-			lowerLimit_[t] = icn.cons.range.getLower();
-			upperLimit_[t++] = icn.cons.range.getUpper();
-		}
-		
-		//outputs
-		for(String s: codec.internalEnumeratingCodec.outputs.keyList()) {
-			OutputCons oc = codec.internalEnumeratingCodec.outputs.get(s);
-			lowerLimit_[t] = oc.fit_range.getLower();
-			upperLimit_[t++] = oc.fit_range.getUpper();
-		}
-		
-
-		this.numberOfConstraints_ = 0; // No constraints
-		this.numberOfObjectives_ = 1; // Single-objective optimization
-		
-		problemName_ = extendedModel.getModel().id; //Name of the incomplete model
-		
-		//Mixed integer solution
-		solutionType_ = new IntRealSolutionType(this, cLength, iLength + pLength + oLength);
+		problemName_ = incompleteModel.getModel().id; // Name of the incomplete model
 		
 		plateau = new TreeSet<PlateauModel>();
-		
+
 	}
-	
+
 	@Override
 	public void evaluate(Solution solution) throws JMException {
-		Variable[] genotype = solution.getDecisionVariables();
-		Variable[] structure = Arrays.copyOfRange(genotype, 0, cLength);
-		ExtendedModel phenotype = codec.decode(structure);
+		throw new JMException("Evaluation not implemented. Specify a problem.");
+	}
+	
+	
+	//Utilities
+	
+	//modified from task
+	protected List<Dataset> simulateModel(ExtendedModel em, List<Dataset> datasets)
+			throws InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException,
+			FailedSimulationException, IOException {
 
-		IQGraph graph = new IQGraph(phenotype.getModel());
+		Model model = em.getModel();
 
-		Output output = null;
-		
-		double error = 0;
-		boolean failed = false;
-		
-		
+		List<Dataset> outputDatas = new ArrayList<Dataset>();
+
 		try {
-			
-			output = new Output(outputSpec, graph);
-
-			// Generate ODE models and simulators
-			simulators = new ArrayList<CVodeSimulator>();
-			odeModels = new ArrayList<ODEModel>();
-			outputModels = new ArrayList<OutputModel>();
-
 			for (int i = 0; i < datasets.size(); i++) {
-				ODEModel lodeModel;
 
-				lodeModel = new ODEModel(output.graph, datasets, dimsToCols, exosToCols, i);
+				for (String name : model.allVars.keySet()) {
+					IV var = model.allVars.get(name);
+					if (initialValuesSpec.usedatasetvalues) {
+						String dsColName = endosToCols.get(name);
+						if (dsColName != null) {
+							var.initial = datasets.get(i).getElem(0, dsColName);
+							model.allVars.put(name, var);
+						}
+					}
+				}
 
-				simulator = new CVodeSimulator(ODESolver.BDF, NonlinearSolver.NEWTON);
-				simulator.initialize(lodeModel);
+				IQGraph graph = new IQGraph(model);
+				Output output = new Output(outputSpec, graph);
 
+				ODEModel odeModel = new ODEModel(graph, datasets, dimsToCols, exosToCols, i);
+				CVodeSimulator simulator = new CVodeSimulator(ODESolver.BDF, NonlinearSolver.NEWTON);
+				simulator.initialize(odeModel);
 				simulator.setTolerances(spec.reltol, spec.abstol);
 				simulator.setLinearSolver(LinearSolver.SPGMR);
 				simulator.setMaxNumSteps(spec.steps);
 
-				// FIXME: might need fixing see fixme in OutputModel
-				OutputModel loutputModel = new OutputModel(output, datasets, null, dimsToCols, exosToCols, outsToCols,
-						i);
+				Dataset simulation = simulator.simulate();
 
-				odeModels.add(lodeModel);
-				outputModels.add(loutputModel);
-				simulators.add(simulator);
-			}
-			
-			//get and set model parameters for simulation
-			double[] modelParameters = new double[output.graph.reachParameters.size()];
-			for (int i = 0; i < modelParameters.length; i++) {
-				String name = output.graph.reachParameters.get(i).id;
-				Double value = output.graph.reachParameters.get(i).cons.value;
-				if(value!= null) { 
-					modelParameters[i] = value;
-				} else {
-					int pIndex = codec.internalEnumeratingCodec.params.indexOf(name);
-					modelParameters[i] = output.graph.reachParameters.get(i).cons.value = genotype[cLength + iLength + pIndex].getValue();
-				}
-			}
-			
-			//get and set output parameters for simulation
-			double[] outputParameters = new double[output.fitted.size()]; 
-			for (int i = 0; i < outputParameters.length; i++) {
-				String name = output.fitted.get(i).name;
-				Double value = output.fitted.get(i).value;
-				if(value != null) {
-					outputParameters[i] = value;
-				} else {
-					int oIndex = codec.internalEnumeratingCodec.outputs.indexOf(name);
-					outputParameters[i] = output.fitted.get(i).value = genotype[cLength + iLength + pLength + oIndex].getValue();
-				}
-			}
-			
+				OutputModel outputModel = new OutputModel(output, datasets, simulation, dimsToCols, exosToCols,
+						outsToCols, i);
 
-			//initials for each simulation and actual simulation
-			for (int d = 0; d < datasets.size(); d++) {
-				
-				double[] initialValues = new double[output.graph.diffDifferential.size()];
-				
-					//initial values
-					for (int i = 0; i < initialValues.length; i++) {
-						Double value = output.graph.diffDifferential.get(i).var.initial;
-						String name = output.graph.diffDifferential.get(i).id;
-						if(value!=null) {
-							initialValues[i] = value;
-						} else {
-							int iIndex = codec.internalEnumeratingCodec.initials.indexOf(name);
-							if (initialValuesSpec.sameforalldatasets) {
-								initialValues[i] = output.graph.diffDifferential.get(i).var.initial = genotype[cLength + iIndex].getValue();
-							} else {
-								initialValues[i] = output.graph.diffDifferential.get(i).var.initial = genotype[cLength + codec.internalEnumeratingCodec.initials.size()*d + iIndex].getValue();
-							}
-						}
-					}
-					
-					odeModels.get(d).reset(initialValues, modelParameters);
-					
-					simulators.get(d).reinitialize(odeModels.get(d));
-					
-					simulation = simulators.get(d).simulate();
-					
-					outputModels.get(d).reset(simulation, modelParameters, outputParameters);
-					outputData = outputModels.get(d).compute();
-					
-					phenotype.getSimulations().add(outputData);
-					
-					error += objFunction.evaluateTrajectory(outputData, d);
-			}
-			
-			//clean up
-			simulators.clear();
-			odeModels.clear();
-			outputModels.clear();
-			
+				Double[] outputs = new Double[em.getOutputConstants().values().size()];
+				em.getOutputConstants().values().toArray(outputs);
+				outputModel.setOutputParameters(ArrayUtils.toPrimitive(outputs));
 
-		} catch (InstantiationException | IllegalAccessException | ClassNotFoundException | IOException
-				| RecognitionException e) {
-			//Panic! 
-			e.printStackTrace();
-		} catch (FailedSimulationException ex) {
-			failed = true;
-		}
-		
-		
-		if(failed) {
-			solution.setObjective(0, Double.POSITIVE_INFINITY);
-		} else {
-			//Regularize the objective function!
-			//using number of parameters
-			double comp = (output.graph.reachParameters.size())/(codec.internalEnumeratingCodec.pCompHigh);
-			
-			//using number of fragments
-			//double comp = 0;
-			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			//comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
-			
-			error /= (outputData.getNCols()-1)*datasets.size();
-			double lambda = 0.5;
-			error = lambda*error+(1-lambda)*comp;
-			
-			solution.setObjective(0, error);
-			phenotype.getFitnessMeasures().put(objFunction.getName(), error);
-			
-			//keep only the best set of parameter values for each structure
-			PlateauModel cModel = new PlateauModel(structure, phenotype);
-			
-			boolean pass = false;
-			TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
-			for(PlateauModel p : plateau) {
-				if(p.equals(cModel)) {
-					plateau2.add((p.compareTo(cModel) > 0) ? cModel : p);
-					pass = true;
-				} else {
-					plateau2.add(p);
-				}
+				outputDatas.add(outputModel.compute());
+
 			}
-			
-			plateau.clear();
-			plateau.addAll(plateau2);
-			if(!pass) plateau.add(cModel);
-			
-			filterPlateau();
-			
-			if(error < minerror){
-				minerror = error;
-			}
-		}
-		
-		if (count % 100 == 0) {
-			Task.logger.debug("Structure evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
-		}
-		
-		if (count % populationSize == 0 ){
-			logger.info("Structure evaluation calls: " + count + " - " + "minerror="+ minerror + " - " + plateau.size() + " models in the plateau");
+			return outputDatas;
+		} catch (FailedSimulationException e) {
+			System.out.println("Simulation error: " + e.getMessage());
+			return null;
 		}
 
-		count++;
-		
-	}
-
-	
-	public void setPopulationSize(int populationSize) {
-		this.populationSize = populationSize;
-	}
-	
-	public ArrayList<ExtendedModel> getPlateau() {
-		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
-		for(PlateauModel p : plateau) toReturn.add(p.eModel);
-		return toReturn;
 	}
 	
 	
-	//How big can the plateau get so this becomes computationally expensive step?
-	private void filterPlateau() {
+	protected void filterPlateau() {
 		
 		Iterator<PlateauModel> pIterator = plateau.iterator();
 		PlateauModel best = pIterator.next();
@@ -375,5 +182,32 @@ public class ModelSearchProblem extends Problem {
 		}
 		
 		plateau = new TreeSet<PlateauModel>(plateau2);
+	}
+	
+	public ArrayList<ExtendedModel> getPlateau() {
+		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
+		for (PlateauModel p : plateau)
+			toReturn.add(p.eModel);
+		return toReturn;
+	}
+	
+	protected static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
+		List<Map.Entry<K, V>> list = new LinkedList<>(map.entrySet());
+		Collections.sort(list, new Comparator<Map.Entry<K, V>>() {
+			@Override
+			public int compare(Map.Entry<K, V> o1, Map.Entry<K, V> o2) {
+				return (o1.getValue()).compareTo(o2.getValue());
+			}
+		});
+
+		Map<K, V> result = new LinkedHashMap<>();
+		for (Map.Entry<K, V> entry : list) {
+			result.put(entry.getKey(), entry.getValue());
+		}
+		return result;
+	}
+	
+	public void setPopulationSize(int populationSize) {
+		this.populationSize = populationSize;
 	}
 }

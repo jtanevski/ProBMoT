@@ -5,7 +5,7 @@ import temp.ExtendedModel;
 import xml.OutputSpec;
 import jmetal.core.Variable;
 
-public abstract class HeuristicCodec {
+abstract class HeuristicCodec {
 	protected ExtendedModel extendedModel;
 	protected LinkedList<Integer> code;
 	protected EnumeratingCodec internalEnumeratingCodec;

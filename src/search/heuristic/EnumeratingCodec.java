@@ -33,7 +33,7 @@ import temp.ICNode;
  */
 
 
-public class EnumeratingCodec extends HeuristicCodec {
+class EnumeratingCodec extends HeuristicCodec {
 
 	private ModelEnumerator search;
 	protected ListMap<String,ICNode> params;
