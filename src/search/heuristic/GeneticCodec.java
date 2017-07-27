@@ -41,6 +41,7 @@ class GeneticCodec extends HeuristicCodec {
 		extendedModel = null;
 		code=null; 
 		internalEnumeratingCodec = null;
+		enumerate = true;
 	}
 	
 	
@@ -48,9 +49,11 @@ class GeneticCodec extends HeuristicCodec {
 	@Override
 	public LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec) {
 
-		//Extract information about unknown parameters, initials and outputs by enumeration 
-		internalEnumeratingCodec = new EnumeratingCodec();
-		internalEnumeratingCodec.encode(extendedModel.copy(), outputSpec);
+		//Extract information about unknown parameters, initials and outputs by enumeration
+		if(enumerate) {
+			internalEnumeratingCodec = new EnumeratingCodec();
+			internalEnumeratingCodec.encode(extendedModel.copy(), outputSpec);
+		}
 		
 		// Create long template for genotype encoding, and list of lengths of code representation on each level
 		logger.info("Encoding");
@@ -83,7 +86,7 @@ class GeneticCodec extends HeuristicCodec {
 			}
 		}
 		
-		if(total != internalEnumeratingCodec.code.get(0)) logger.warn("Encoding contains spurious models due to the presence of unbalanced number of subprocesses in the incomplete model. There is bias towards selecting alternative processes with maximal depth.");
+		if(enumerate && total != internalEnumeratingCodec.code.get(0)) logger.warn("Encoding contains spurious models due to the presence of unbalanced number of subprocesses in the incomplete model. There is bias towards selecting alternative processes with maximal depth.");
 		
 		return code;
 

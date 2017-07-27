@@ -862,7 +862,11 @@ public class Task {
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
 						ts.settings.fitter, ts.settings.initialvalues);
 				
-				//beamsearch.setbeamWidth(3);
+				//For huge problems
+				//beamsearch.setEnumerate(false);
+				
+				beamsearch.setbeamWidth(3);
+				
 				
 				beamsearch.execute();
 				
@@ -888,6 +892,9 @@ public class Task {
 				algorithm.setInputParameter("maxEvaluations", problem.getNumberOfVariables() * 2 * 50);
 
 				problem.setPopulationSize(problem.getNumberOfVariables() * 2);
+				
+				//For huge problems
+				//problem.setEnumerate(false);
 
 				parameters = new HashMap<String, Object>();
 				parameters.put("probability", 0.9);
@@ -916,6 +923,9 @@ public class Task {
 			algorithm.setInputParameter("populationSize", spec.population);
 			
 			problem.setPopulationSize(spec.population);
+			
+			//For huge problems
+			//problem.setEnumerate(false);
 	
 			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
 	

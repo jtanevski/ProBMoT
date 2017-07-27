@@ -227,32 +227,35 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 			// Execute the optimization
 
-			SolutionSet population = algorithm.execute();
-			Variable[] variables = population.get(0).getDecisionVariables();
-
-			for (int i = 0; i < problem.initialIndexes.size(); i++) {
-				int indexval = problem.initialIndexes.get(i).intValue();
-				String ivName = problem.initialFitted.get(indexval).id;
-				Double iVal = variables[i + problem.initialIndexes.size()].getValue();
-				model.getModel().allVars.get(ivName).initial = iVal;
+			SolutionSet population = null;
+			if(max_evals>0) {
+				population = algorithm.execute();
+				Variable[] variables = population.get(0).getDecisionVariables();
+	
+				for (int i = 0; i < problem.initialIndexes.size(); i++) {
+					int indexval = problem.initialIndexes.get(i).intValue();
+					String ivName = problem.initialFitted.get(indexval).id;
+					Double iVal = variables[i + problem.initialIndexes.size()].getValue();
+					model.getModel().allVars.get(ivName).initial = iVal;
+				}
+	
+				for (int i = 0; i < problem.modelFitted.size(); i++) {
+					String icName = problem.modelFitted.get(i).id;
+					Double icValue = variables[problem.totalInitialToFit + i].getValue();
+					model.getModel().allConsts.get(icName).value = icValue;
+				}
+	
+				Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
+				for (int i = 0; i < problem.outputFitted.size(); i++) {
+					String outputName = output.fitted.getKey(i);
+					Double outputValue = variables[problem.totalInitialToFit + problem.modelFitted.size() + i].getValue();
+	
+					outputConsts.put(outputName, outputValue);
+				}
+	
+				model.setOutputConstants(outputConsts);
 			}
-
-			for (int i = 0; i < problem.modelFitted.size(); i++) {
-				String icName = problem.modelFitted.get(i).id;
-				Double icValue = variables[problem.totalInitialToFit + i].getValue();
-				model.getModel().allConsts.get(icName).value = icValue;
-			}
-
-			Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
-			for (int i = 0; i < problem.outputFitted.size(); i++) {
-				String outputName = output.fitted.getKey(i);
-				Double outputValue = variables[problem.totalInitialToFit + problem.modelFitted.size() + i].getValue();
-
-				outputConsts.put(outputName, outputValue);
-			}
-
-			model.setOutputConstants(outputConsts);
-
+			
 			List<Dataset> simulations = null;
 			try {
 				simulations = simulateModel(model, datasets);
@@ -264,9 +267,20 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 			Map<String, Double> fitnessMeasures = new HashMap<String, Double>();
 
-			error = population.get(0).getObjective(0);
-			fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+			if (max_evals > 0) {
+				fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+			} else {
+				if (simulations == null) {
+					fitnessMeasures.put(objectiveFun.getName(), Double.POSITIVE_INFINITY);
+				} else {
+					for (int i = 0; i < simulations.size(); i++) {
+						error += objectiveFun.evaluateTrajectory(simulations.get(i), i);
+					}
+					fitnessMeasures.put(objectiveFun.getName(), error);
+				}
+			}
 
+			model.setFitnessMeasures(fitnessMeasures);
 			model.setFitnessMeasures(fitnessMeasures);
 
 		} catch (Exception e) {
@@ -279,15 +293,17 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		} else {
 			// Regularize the objective function!
 			// using number of parameters
-			double comp = (output.graph.reachParameters.size()) / (codec.internalEnumeratingCodec.pCompHigh);
-
-			// using number of fragments
-			// double comp = 0;
-			// for(IVNode var : output.graph.reachVariables.valueList()) comp +=
-			// var.inputIQs.size();
-			// comp = (comp -
-			// codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh
-			// - codec.internalEnumeratingCodec.fCompLow);
+			double comp = output.graph.reachParameters.size();
+			if(codec.enumerate) {
+				comp /= codec.internalEnumeratingCodec.pCompHigh;
+			}
+			
+			//using number of fragments
+			//double comp = 0;
+			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+			//if(codec.enumerate) {
+			//	comp /= codec.internalEnumeratingCodec.fCompHigh;
+			//}
 
 			double lambda = 0.5;
 			error = lambda * error + (1 - lambda) * comp;
@@ -320,7 +336,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			}
 		}
 
-		if (count % 1000 == 0) {
+		if (count % cLength == 0) {
 			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
 					+ " models in the plateau");
 		}

@@ -210,4 +210,8 @@ class ModelSearchProblem extends Problem {
 	public void setPopulationSize(int populationSize) {
 		this.populationSize = populationSize;
 	}
+	
+	public void setEnumerate(boolean enumerate) {
+		codec.enumerate = enumerate;
+	}
 }

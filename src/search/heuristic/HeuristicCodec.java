@@ -9,6 +9,7 @@ abstract class HeuristicCodec {
 	protected ExtendedModel extendedModel;
 	protected LinkedList<Integer> code;
 	protected EnumeratingCodec internalEnumeratingCodec;
+	protected boolean enumerate;
 	public abstract LinkedList<Integer> encode(ExtendedModel extendedModel, OutputSpec outputSpec);
 	public abstract ExtendedModel decode(Variable[] genotype);
 }

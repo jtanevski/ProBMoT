@@ -248,12 +248,18 @@ public class SingleLevelSearchProblem extends ModelSearchProblem {
 		} else {
 			//Regularize the objective function!
 			//using number of parameters
-			double comp = (output.graph.reachParameters.size())/(codec.internalEnumeratingCodec.pCompHigh);
+			double comp = output.graph.reachParameters.size();
+			if(codec.enumerate) {
+				comp /= codec.internalEnumeratingCodec.pCompHigh;
+			}
 			
 			//using number of fragments
 			//double comp = 0;
 			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			//comp =  (comp - codec.internalEnumeratingCodec.fCompLow)/(codec.internalEnumeratingCodec.fCompHigh - codec.internalEnumeratingCodec.fCompLow);
+			//if(codec.enumerate) {
+			//	comp /= codec.internalEnumeratingCodec.fCompHigh;
+			//}
+
 			
 			error /= (outputData.getNCols()-1)*datasets.size();
 			double lambda = 0.5;

@@ -47,6 +47,7 @@ class EnumeratingCodec extends HeuristicCodec {
 		extendedModel = null;
 		code = null; 
 		internalEnumeratingCodec = this;
+		enumerate = true;
 	}
 
 	@Override
