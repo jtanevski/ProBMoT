@@ -32,6 +32,7 @@ import task.Task;
 import temp.Dataset;
 import temp.ExtendedModel;
 import temp.IQGraph;
+import temp.IVNode;
 import temp.Output;
 import util.FailedSimulationException;
 import util.ListMap;
@@ -90,38 +91,42 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		LinkedList<Variable[]> initialList = new LinkedList<Variable[]>();
 		initialList.add(initialState);
 		
-		search_step(initialList);
+		search(initialList);
 		
 	}
 	
-	private void search_step(LinkedList<Variable[]> states) throws JMException {
+	private void search(LinkedList<Variable[]> states) throws JMException {
 		
 		Map<Variable[], Double> beam = new ListMap<Variable[], Double>();
 		
-		//breadth first
-		for(Variable[] state: states) {
-			LinkedList<Variable[]> neighbors = generateNeighbors(state);
+		LinkedList<Variable[]> nextStep = states;
+		
+		while(true) {
+			//breadth first
+			beam.clear();
 			
-			for(Variable[] model : neighbors) {
-				Double heuristic = evaluate(model);
-				beam.put(model, heuristic);
+			for(Variable[] state: nextStep) {
+				LinkedList<Variable[]> neighbors = generateNeighbors(state);
+				
+				for(Variable[] model : neighbors) {
+					Double heuristic = evaluate(model);
+					beam.put(model, heuristic);
+				}
+			}
+			
+			//stop criterion
+			if(beam.size() == 0) break;
+			
+			beam = sortByValue(beam);
+			
+			nextStep.clear();
+	
+			int c=0;
+			for(Variable[] candidate : beam.keySet()){
+				nextStep.add(candidate);
+				if((++c)>=beamWidth) break;
 			}
 		}
-		
-		//stop criterion
-		if(beam.size() == 0) return;
-		
-		beam = sortByValue(beam);
-		
-		LinkedList<Variable[]> nextStep = new LinkedList<Variable[]>();
-
-		int c=0;
-		for(Variable[] candidate : beam.keySet()){
-			nextStep.add(candidate);
-			if((++c)>=beamWidth) break;
-		}
-		
-		search_step(nextStep);
 		
 	}
 	
@@ -293,17 +298,17 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		} else {
 			// Regularize the objective function!
 			// using number of parameters
-			double comp = output.graph.reachParameters.size();
-			if(codec.enumerate) {
-				comp /= codec.internalEnumeratingCodec.pCompHigh;
-			}
+//			double comp = output.graph.reachParameters.size();
+//			if(codec.enumerate) {
+//				comp /= codec.internalEnumeratingCodec.pCompHigh;
+//			}
 			
 			//using number of fragments
-			//double comp = 0;
-			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			//if(codec.enumerate) {
-			//	comp /= codec.internalEnumeratingCodec.fCompHigh;
-			//}
+			double comp = 0;
+			for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+			if(codec.enumerate) {
+				comp /= codec.internalEnumeratingCodec.fCompHigh;
+			}
 
 			double lambda = 0.5;
 			error = lambda * error + (1 - lambda) * comp;
