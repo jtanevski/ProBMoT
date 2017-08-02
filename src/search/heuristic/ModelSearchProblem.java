@@ -38,6 +38,7 @@ import xml.CVODESpec;
 import xml.FitterSpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
+import xml.SearchSpec;
 
 class ModelSearchProblem extends Problem {
 	
@@ -56,6 +57,7 @@ class ModelSearchProblem extends Problem {
 	protected CVODESpec spec;
 	protected FitterSpec fitterSpec;
 	protected InitialValuesSpec initialValuesSpec;
+	protected SearchSpec searchSpec;
 	
 	protected int populationSize;
 
@@ -71,7 +73,7 @@ class ModelSearchProblem extends Problem {
 	public ModelSearchProblem(ExtendedModel incompleteModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
-			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, SearchSpec searchSpec, boolean enumerate) {
 		// things needed by the evaluation function
 		this.datasets = datasets;
 		this.outputSpec = outputSpec;
@@ -83,6 +85,7 @@ class ModelSearchProblem extends Problem {
 		this.fitterSpec = fitterSpec;
 		this.spec = spec;
 		this.initialValuesSpec = initialValuesSpec;
+		this.searchSpec = searchSpec;
 		
 		this.extendedModel = incompleteModel;
 		
@@ -163,13 +166,26 @@ class ModelSearchProblem extends Problem {
 		
 		Iterator<PlateauModel> pIterator = plateau.iterator();
 		PlateauModel best = pIterator.next();
+		
+		double modifier = searchSpec.plateau;
+		if(modifier<1) modifier += 1;
+		
+		int counter= 0;
 		while (pIterator.hasNext()) {
 			PlateauModel next = pIterator.next();
-			Double bestVal = best.eModel.getFitnessMeasures().get(objFunction.getName());
-			Double nextVal = next.eModel.getFitnessMeasures().get(objFunction.getName());
-			if (bestVal * 1.1 < nextVal) {
-				break;
+
+			if(modifier > 1 && modifier < 2) {
+				Double bestVal = best.eModel.getFitnessMeasures().get(objFunction.getName());
+				Double nextVal = next.eModel.getFitnessMeasures().get(objFunction.getName());
+				if (bestVal * modifier < nextVal) {
+					break;
+				}
+			} else {
+				if(++counter > modifier) {
+					break;
+				}
 			}
+			
 			best = next;
 		}
 		
@@ -192,7 +208,7 @@ class ModelSearchProblem extends Problem {
 		return toReturn;
 	}
 	
-	protected static <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
+	protected <K, V extends Comparable<? super V>> Map<K, V> sortByValue(Map<K, V> map) {
 		List<Map.Entry<K, V>> list = new LinkedList<>(map.entrySet());
 		Collections.sort(list, new Comparator<Map.Entry<K, V>>() {
 			@Override

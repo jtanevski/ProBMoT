@@ -38,6 +38,7 @@ import xml.DESpec;
 import xml.FitterSpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
+import xml.SearchSpec;
 
 public class TwoLevelSearchProblem extends ModelSearchProblem {
 
@@ -48,9 +49,9 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 	public TwoLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
-			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, SearchSpec searchSpec, boolean enumerate) {
 		
-		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, enumerate);
+		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, searchSpec, enumerate);
 		
 		cLength = codec.code.size();
 
@@ -87,11 +88,14 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		// extendedmodel is null. It can be used to efficiently store seen structures
 		// only.
 		PlateauModel isSeen = new PlateauModel(structure, model);
-		if (seen.containsKey(isSeen)) {
-			solution.setObjective(0, seen.get(isSeen));
-			return;
-		} else {
-			seen.put(isSeen, Double.POSITIVE_INFINITY);
+		
+		synchronized (seen) {
+			if (seen.containsKey(isSeen)) {
+				solution.setObjective(0, seen.get(isSeen));
+				return;
+			} else {
+				seen.put(isSeen, Double.POSITIVE_INFINITY);
+			}
 		}
 
 		Output output = null;
@@ -219,66 +223,57 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			solution.setObjective(0, Double.POSITIVE_INFINITY);
 		} else {
 			// Regularize the objective function!
-			// using number of parameters
-			double comp = output.graph.reachParameters.size();
-			if(codec.enumerate) {
-				comp /= codec.internalEnumeratingCodec.pCompHigh;
-			}
+			double comp = 0;			
 			
-			//using number of fragments
-			//double comp = 0;
-			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			//if(codec.enumerate) {
-			//	comp /= codec.internalEnumeratingCodec.fCompHigh;
-			//}
-			
-			
-			double lambda = 0.5;
-			error = lambda * error + (1 - lambda) * comp;
-
-			solution.setObjective(0, error);
-			seen.replace(isSeen, error);
-
-			// keep only the best set of parameter values for each structure
-			PlateauModel cModel = new PlateauModel(structure, model);
-
-			boolean pass = false;
-			TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
-			for (PlateauModel p : plateau) {
-				if (p.equals(cModel)) {
-					plateau2.add((p.compareTo(cModel) > 0) ? cModel : p);
-					pass = true;
-				} else {
-					plateau2.add(p);
+			//using number of parameters
+			if(searchSpec.regularization.contains("param")) {
+				comp = output.graph.reachParameters.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.pCompHigh;
 				}
 			}
+			
+			// or fragments
+			if(searchSpec.regularization.contains("frag")) {
+				for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.fCompHigh;
+				}
+			}
+			
+			double lambda = searchSpec.lambda;
+			if(lambda > 1 || lambda < 0) lambda = 0.5;
+			error = lambda*error+(1-lambda)*comp;
+			
+			solution.setObjective(0, error);
+			
+			synchronized (seen){
+				seen.replace(isSeen, error);
+			}
 
-			plateau.clear();
-			plateau.addAll(plateau2);
-			if (!pass)
-				plateau.add(cModel);
 
-			filterPlateau();
+			synchronized (plateau) {
+				plateau.add(new PlateauModel(structure, model));
+			
+				filterPlateau();
+			}
 
 			if (error < minerror) {
 				minerror = error;
 			}
 		}
 
-		if (count % 100 == 0) {
-			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
-					+ " models in the plateau");
-		}
+		synchronized (logger) {
+			if (count % 100 == 0) {
+				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+						+ " models in the plateau");
+			}
 
-		if (count % populationSize == 0) {
-			logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
-					+ " models in the plateau");
-		}
+			if (count % populationSize == 0) {
+				logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+						+ " models in the plateau");
+			}
 
-		
-		//Thread safety
-		synchronized(this)
-		{
 			count++;
 		}
 

@@ -28,6 +28,7 @@ import util.FailedSimulationException;
 import xml.CVODESpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
+import xml.SearchSpec;
 import jmetal.core.Solution;
 import jmetal.core.Variable;
 import jmetal.encodings.solutionType.IntRealSolutionType;
@@ -52,9 +53,9 @@ public class SingleLevelSearchProblem extends ModelSearchProblem {
 	
 	public SingleLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, TrajectoryObjectiveFunction objFunction, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> exosToCols,
-			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
+			BiMap<String, String> outsToCols, CVODESpec spec, InitialValuesSpec initialValuesSpec, SearchSpec searchSpec, boolean enumerate) {
 		
-		super(extendedModel,outputSpec,datasets,dimsToCols, null, exosToCols, outsToCols, null, spec, null, initialValuesSpec, enumerate);
+		super(extendedModel,outputSpec,datasets,dimsToCols, null, exosToCols, outsToCols, null, spec, null, initialValuesSpec, searchSpec, enumerate);
 		
 		//things needed by the evaluation function
 		cLength = codec.code.size();
@@ -246,23 +247,26 @@ public class SingleLevelSearchProblem extends ModelSearchProblem {
 		if(failed) {
 			solution.setObjective(0, Double.POSITIVE_INFINITY);
 		} else {
+			double comp = 0;
 			//Regularize the objective function!
+			
 			//using number of parameters
-			double comp = output.graph.reachParameters.size();
-			if(codec.enumerate) {
-				comp /= codec.internalEnumeratingCodec.pCompHigh;
+			if(searchSpec.regularization.contains("param")) {
+				comp = output.graph.reachParameters.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.pCompHigh;
+				}
 			}
 			
-			//using number of fragments
-			//double comp = 0;
-			//for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			//if(codec.enumerate) {
-			//	comp /= codec.internalEnumeratingCodec.fCompHigh;
-			//}
-
+			if(searchSpec.regularization.contains("frag")) {
+				for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.fCompHigh;
+				}
+			}
 			
-			error /= (outputData.getNCols()-1)*datasets.size();
-			double lambda = 0.5;
+			double lambda = searchSpec.lambda;
+			if(lambda > 1 || lambda < 0) lambda = 0.5;
 			error = lambda*error+(1-lambda)*comp;
 			
 			solution.setObjective(0, error);

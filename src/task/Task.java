@@ -4,6 +4,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -430,7 +431,7 @@ public class Task {
 	public void perform() throws IOException, InterruptedException, ConfigurationException, JAXBException, SAXException,
 			InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException, JMException,
 			FailedSimulationException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
-			SecurityException, URISyntaxException {
+			SecurityException, URISyntaxException{
 
 		Task.logger.info("Task started");
 		switch (ts.command) {
@@ -820,7 +821,7 @@ public class Task {
 	
 	
 	
-	private void heuristicSearch() throws SecurityException, IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, ClassNotFoundException, JMException {
+	private void heuristicSearch() throws SecurityException, IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, ClassNotFoundException, JMException, InterruptedException {
 		if (this.incompleteModel == null) {
 			throw new RuntimeException(
 					"Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
@@ -852,8 +853,13 @@ public class Task {
 		
 
 		//Default is two level genetic
+		
 		boolean level2 = true;
-		boolean beam = true;
+		boolean beam = false;
+		if(ts.settings.search.level.contains("1")) level2 = false;
+		if(ts.settings.search.level.contains("b")) beam = true;
+		
+		
 		
 
 		if(level2) {
@@ -861,12 +867,11 @@ public class Task {
 				//enumerate false for huge problems
 				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets, dimsToCols,
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues, false);
+						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
 				
 				//For huge problems
 				
-				
-				beamsearch.setbeamWidth(3);
+				beamsearch.setbeamWidth(ts.settings.search.particles);
 				
 				
 				beamsearch.execute();
@@ -877,8 +882,9 @@ public class Task {
 
 				TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues, true);
-				int threads = 4; // 0 - use all the available cores
+						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
+				
+				int threads = Math.max(2,ts.settings.search.threads); // 0 - use all the available cores
 				IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
 
 				algorithm = new pgGA(problem, evaluator);
@@ -889,10 +895,10 @@ public class Task {
 				Operator selection;
 
 				// Test parameters
-				algorithm.setInputParameter("populationSize", problem.getNumberOfVariables() * 2);
-				algorithm.setInputParameter("maxEvaluations", problem.getNumberOfVariables() * 2 * 50);
+				algorithm.setInputParameter("populationSize", ts.settings.search.particles);
+				algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
 
-				problem.setPopulationSize(problem.getNumberOfVariables() * 2);
+				problem.setPopulationSize(ts.settings.search.particles);
 				
 				//For huge problems
 				//problem.setEnumerate(false);
@@ -917,10 +923,12 @@ public class Task {
 				plateau = problem.getPlateau();
 			}
 		} else {
-			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues, true);
+			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues, ts.settings.search, true);
 			
 			algorithm = new CMAES(problem);
 
+			//takes parameters from the fitter spec
+			
 			algorithm.setInputParameter("populationSize", spec.population);
 			
 			problem.setPopulationSize(spec.population);

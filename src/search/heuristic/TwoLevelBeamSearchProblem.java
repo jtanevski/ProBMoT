@@ -2,19 +2,23 @@ package search.heuristic;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorCompletionService;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import java.util.concurrent.TimeUnit;
 
 import org.antlr.runtime.RecognitionException;
 
 import com.google.common.collect.BiMap;
 
-import fit.MersenneTwisterFastFix;
 import fit.objective.ObjectiveProblem;
 import fit.objective.RMSEMultiDataset;
 import fit.objective.TrajectoryObjectiveFunction;
@@ -41,6 +45,7 @@ import xml.DESpec;
 import xml.FitterSpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
+import xml.SearchSpec;
 
 public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	
@@ -54,9 +59,9 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	public TwoLevelBeamSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
-			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, boolean enumerate) {
+			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, SearchSpec searchSpec, boolean enumerate) {
 
-		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, enumerate);
+		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, searchSpec, enumerate);
 		
 		cLength = codec.code.size();
 
@@ -79,7 +84,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		
 	}
 	
-	public void execute() throws JMException{
+	public void execute() throws JMException, InterruptedException{
 		//generate random solution
 		Variable[] initialState = new Variable[numberOfVariables_];
 		
@@ -95,29 +100,68 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		
 	}
 	
-	private void search(LinkedList<Variable[]> states) throws JMException {
+	private void search(LinkedList<Variable[]> states) throws JMException, InterruptedException {
 		
-		Map<Variable[], Double> beam = new ListMap<Variable[], Double>();
+		//shared memory
+		final Map<Variable[], Double> beam = new ListMap<Variable[], Double>();
 		
 		LinkedList<Variable[]> nextStep = states;
+		PlateauModel best = null;
+		
+		int noImprovement = 0;
+		int convergenceStop = 5;
+		ExecutorService executor;
 		
 		while(true) {
 			//breadth first
 			beam.clear();
+			executor = Executors.newFixedThreadPool(Math.max(2,searchSpec.threads));
 			
 			for(Variable[] state: nextStep) {
 				LinkedList<Variable[]> neighbors = generateNeighbors(state);
 				
-				for(Variable[] model : neighbors) {
-					Double heuristic = evaluate(model);
-					beam.put(model, heuristic);
+							
+				for(final Variable[] model : neighbors) {
+					executor.execute(new Runnable() {
+
+						@Override
+						public void run(){
+							Double heuristic = Double.MAX_VALUE;
+							try {
+							 heuristic = evaluate(model);
+							} catch (JMException e) {}
+							
+							beam.put(model, heuristic);
+						}
+					});
+					
 				}
+				
 			}
 			
-			//stop criterion
-			if(beam.size() == 0) break;
+			executor.shutdown();
+			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			
-			beam = sortByValue(beam);
+			//fully explored stop criterion
+			if(beam.size() == 0) { logger.info("Search completed. Beam is empty."); break; }
+			
+			//convergence stop criterion
+			if (best != null && best.equals(plateau.first())) {
+				noImprovement++;
+				logger.info("Search reports no improvement in the last " + noImprovement + " search step(s).");
+				if(noImprovement >= convergenceStop) {
+					logger.info("Search completed. No improvement in " + convergenceStop + " conscutive search steps.");
+					break;
+				}
+			} else {
+				noImprovement = 0;
+				best = plateau.first();
+			}
+			
+			//concurrency reasonss
+			Map<Variable[], Double> beams = sortByValue(beam);
+			beam.clear();
+			beam.putAll(beams);
 			
 			nextStep.clear();
 	
@@ -126,6 +170,8 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 				nextStep.add(candidate);
 				if((++c)>=beamWidth) break;
 			}
+			
+			
 		}
 		
 	}
@@ -297,61 +343,53 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			toReturn = Double.POSITIVE_INFINITY;
 		} else {
 			// Regularize the objective function!
-			// using number of parameters
-//			double comp = output.graph.reachParameters.size();
-//			if(codec.enumerate) {
-//				comp /= codec.internalEnumeratingCodec.pCompHigh;
-//			}
-			
-			//using number of fragments
 			double comp = 0;
-			for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-			if(codec.enumerate) {
-				comp /= codec.internalEnumeratingCodec.fCompHigh;
+			
+			//using number of parameters
+			if(searchSpec.regularization.contains("param")) {
+				comp = output.graph.reachParameters.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.pCompHigh;
+				}
 			}
-
-			double lambda = 0.5;
-			error = lambda * error + (1 - lambda) * comp;
+			
+			if(searchSpec.regularization.contains("frag")) {
+				for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
+				if(codec.enumerate) {
+					comp /= codec.internalEnumeratingCodec.fCompHigh;
+				}
+			}
+			
+			double lambda = searchSpec.lambda;
+			if(lambda > 1 || lambda < 0) lambda = 0.5;
+			error = lambda*error+(1-lambda)*comp;
 
 			toReturn = error;
 
-			// keep only the best set of parameter values for each structure
-			PlateauModel cModel = new PlateauModel(structure, model);
-
-			boolean pass = false;
-			TreeSet<PlateauModel> plateau2 = new TreeSet<PlateauModel>();
-			for (PlateauModel p : plateau) {
-				if (p.equals(cModel)) {
-					plateau2.add((p.compareTo(cModel) > 0) ? cModel : p);
-					pass = true;
-				} else {
-					plateau2.add(p);
-				}
+			synchronized (plateau) {
+				plateau.add(new PlateauModel(structure, model));
+			
+				filterPlateau();
 			}
-
-			plateau.clear();
-			plateau.addAll(plateau2);
-			if (!pass)
-				plateau.add(cModel);
-
-			filterPlateau();
 
 			if (error < minerror) {
 				minerror = error;
 			}
 		}
 
-		if (count % cLength == 0) {
-			Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
-					+ " models in the plateau");
-		}
+		synchronized (logger) {
+			if (count % cLength == 0) {
+				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+						+ " models in the plateau");
+			}
 
-		if (count % beamWidth == 0) {
-			logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
-					+ " models in the plateau");
-		}
+			if (count % cLength == 0) {
+				logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+						+ " models in the plateau");
+			}
 
-		count++;
+			count++;
+		}
 		
 		return toReturn;
 
