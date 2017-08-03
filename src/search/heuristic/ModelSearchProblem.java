@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.logging.Logger;
 
@@ -68,7 +69,7 @@ class ModelSearchProblem extends Problem {
 	protected double minerror = Double.POSITIVE_INFINITY;
 	
 	
-	protected TreeSet<PlateauModel> plateau;
+	protected final TreeSet<PlateauModel> plateau;
 
 	public ModelSearchProblem(ExtendedModel incompleteModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
@@ -96,7 +97,10 @@ class ModelSearchProblem extends Problem {
 		
 		problemName_ = incompleteModel.getModel().id; // Name of the incomplete model
 		
+
 		plateau = new TreeSet<PlateauModel>();
+		
+		
 
 	}
 
@@ -198,7 +202,9 @@ class ModelSearchProblem extends Problem {
 			if(p.equals(best)) break;
 		}
 		
-		plateau = new TreeSet<PlateauModel>(plateau2);
+		plateau.clear();
+		plateau.addAll(plateau2);
+	
 	}
 	
 	public ArrayList<ExtendedModel> getPlateau() {

@@ -1,17 +1,16 @@
 package search.heuristic;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 
 import org.antlr.runtime.RecognitionException;
 
 import com.google.common.collect.BiMap;
 
-import fit.MersenneTwisterFastFix;
 import fit.objective.ObjectiveProblem;
 import fit.objective.RMSEMultiDataset;
 import fit.objective.TrajectoryObjectiveFunction;
@@ -25,7 +24,6 @@ import jmetal.metaheuristics.singleObjective.differentialEvolution.DE;
 import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.selection.SelectionFactory;
 import jmetal.util.JMException;
-import jmetal.util.PseudoRandom;
 import task.Task;
 import temp.Dataset;
 import temp.ExtendedModel;
@@ -44,7 +42,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 
 	private int cLength;
 
-	private HashMap<PlateauModel, Double> seen;
+	private Map<PlateauModel, Double> seen;
 
 	public TwoLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
@@ -74,7 +72,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		// Integer solution
 		solutionType_ = new IntSolutionType(this);
 
-		seen = new HashMap<PlateauModel, Double>();
+		seen = Collections.synchronizedMap(new HashMap<PlateauModel, Double>());
 
 	}
 
@@ -89,13 +87,12 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		// only.
 		PlateauModel isSeen = new PlateauModel(structure, model);
 		
-		synchronized (seen) {
-			if (seen.containsKey(isSeen)) {
-				solution.setObjective(0, seen.get(isSeen));
-				return;
-			} else {
-				seen.put(isSeen, Double.POSITIVE_INFINITY);
-			}
+	
+		if (seen.containsKey(isSeen)) {
+			solution.setObjective(0, seen.get(isSeen));
+			return;
+		} else {
+			seen.put(isSeen, Double.POSITIVE_INFINITY);
 		}
 
 		Output output = null;
@@ -247,9 +244,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			
 			solution.setObjective(0, error);
 			
-			synchronized (seen){
-				seen.replace(isSeen, error);
-			}
+			seen.replace(isSeen, error);
 
 
 			synchronized (plateau) {
@@ -263,7 +258,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			}
 		}
 
-		synchronized (logger) {
+		synchronized (plateau) {
 			if (count % 100 == 0) {
 				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
 						+ " models in the plateau");

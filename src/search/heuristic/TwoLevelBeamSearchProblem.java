@@ -2,14 +2,13 @@ package search.heuristic;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -39,7 +38,6 @@ import temp.IQGraph;
 import temp.IVNode;
 import temp.Output;
 import util.FailedSimulationException;
-import util.ListMap;
 import xml.CVODESpec;
 import xml.DESpec;
 import xml.FitterSpec;
@@ -103,13 +101,13 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	private void search(LinkedList<Variable[]> states) throws JMException, InterruptedException {
 		
 		//shared memory
-		final Map<Variable[], Double> beam = new ListMap<Variable[], Double>();
+		final Map<Variable[], Double> beam = Collections.synchronizedMap(new HashMap<Variable[], Double>());
 		
 		LinkedList<Variable[]> nextStep = states;
 		PlateauModel best = null;
 		
 		int noImprovement = 0;
-		int convergenceStop = 5;
+		int convergenceStop = 10;
 		ExecutorService executor;
 		
 		while(true) {
@@ -130,8 +128,9 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 							try {
 							 heuristic = evaluate(model);
 							} catch (JMException e) {}
-							
+
 							beam.put(model, heuristic);
+							
 						}
 					});
 					
@@ -139,6 +138,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 				
 			}
 			
+			//Better implementation would require Java 8
 			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
 			
@@ -158,7 +158,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 				best = plateau.first();
 			}
 			
-			//concurrency reasonss
+			//concurrency reasons
 			Map<Variable[], Double> beams = sortByValue(beam);
 			beam.clear();
 			beam.putAll(beams);
@@ -344,40 +344,41 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		} else {
 			// Regularize the objective function!
 			double comp = 0;
-			
-			//using number of parameters
-			if(searchSpec.regularization.contains("param")) {
+
+			// using number of parameters
+			if (searchSpec.regularization.contains("param")) {
 				comp = output.graph.reachParameters.size();
-				if(codec.enumerate) {
+				if (codec.enumerate) {
 					comp /= codec.internalEnumeratingCodec.pCompHigh;
 				}
 			}
-			
-			if(searchSpec.regularization.contains("frag")) {
-				for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-				if(codec.enumerate) {
+
+			if (searchSpec.regularization.contains("frag")) {
+				for (IVNode var : output.graph.reachVariables.valueList())
+					comp += var.inputIQs.size();
+				if (codec.enumerate) {
 					comp /= codec.internalEnumeratingCodec.fCompHigh;
 				}
 			}
-			
+
 			double lambda = searchSpec.lambda;
-			if(lambda > 1 || lambda < 0) lambda = 0.5;
-			error = lambda*error+(1-lambda)*comp;
+			if (lambda > 1 || lambda < 0)
+				lambda = 0.5;
+			error = lambda * error + (1 - lambda) * comp;
 
 			toReturn = error;
 
 			synchronized (plateau) {
 				plateau.add(new PlateauModel(structure, model));
-			
 				filterPlateau();
 			}
-
+			
 			if (error < minerror) {
 				minerror = error;
 			}
 		}
-
-		synchronized (logger) {
+		
+		synchronized (plateau) {
 			if (count % cLength == 0) {
 				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
 						+ " models in the plateau");
@@ -390,7 +391,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 			count++;
 		}
-		
+
 		return toReturn;
 
 	}

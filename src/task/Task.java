@@ -821,7 +821,9 @@ public class Task {
 	
 	
 	
-	private void heuristicSearch() throws SecurityException, IOException, InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException, ClassNotFoundException, JMException, InterruptedException {
+	private void heuristicSearch() throws SecurityException, IOException, InstantiationException,
+			IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
+			ClassNotFoundException, JMException, InterruptedException {
 		if (this.incompleteModel == null) {
 			throw new RuntimeException(
 					"Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
@@ -829,53 +831,51 @@ public class Task {
 
 		ExtendedModel ext = new ExtendedModel(incompleteModel);
 
-		//create fitperformance logger
+		// create fitperformance logger
 		Logger flogger = null;
-		
+
 		flogger = Logger.getLogger("fitPerformance");
 		flogger.setUseParentHandlers(false);
 		FileHandler fh = new FileHandler(ts.outputFilepath + "/" + ts.filename + "_fitPerformace" + ".log");
 		fh.setFormatter(new SimpleFormatter());
 		flogger.addHandler(fh);
-		
 
 		Algorithm algorithm = null;
 		DESpec spec = (DESpec) ts.settings.fitter;
-		
+
+		// ensure repeatability
 		MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
 		msf.setSeed(spec.seed);
 		PseudoRandom.setRandomGenerator(msf);
 
-		//Fixed due to regularization in the single level problem
+		// Fixed due to regularization in the single level problem
 		TrajectoryObjectiveFunction objectiveFun = new RelativeRMSEObjectiveFunctionMultiDataset(datasets, outsToCols);
-		
-		ArrayList<ExtendedModel> plateau = new ArrayList<ExtendedModel>();
-		
 
-		//Default is two level genetic
-		
+		ArrayList<ExtendedModel> plateau = new ArrayList<ExtendedModel>();
+
+		// Default is two level genetic
+
 		boolean level2 = true;
 		boolean beam = false;
-		if(ts.settings.search.level.contains("1")) level2 = false;
-		if(ts.settings.search.level.contains("b")) beam = true;
-		
-		
-		
+		if (ts.settings.search.level.contains("1"))
+			level2 = false;
+		if (ts.settings.search.level.contains("b"))
+			beam = true;
 
-		if(level2) {
+		if (level2) {
 			if (beam) {
-				//enumerate false for huge problems
-				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets, dimsToCols,
-						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
-				
-				//For huge problems
-				
+				// enumerate false for huge problems
+				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets,
+						dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols,
+						(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
+						ts.settings.search, false);
+
+				// For huge problems
+
 				beamsearch.setbeamWidth(ts.settings.search.particles);
-				
-				
+
 				beamsearch.execute();
-				
+
 				plateau = beamsearch.getPlateau();
 
 			} else {
@@ -883,25 +883,21 @@ public class Task {
 				TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
 						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
 						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
-				
-				int threads = Math.max(2,ts.settings.search.threads); // 0 - use all the available cores
+
+				int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
 				IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
 
 				algorithm = new pgGA(problem, evaluator);
 
 				HashMap<String, Object> parameters;
 				Operator crossover;
-				Operator mutation; 
+				Operator mutation;
 				Operator selection;
 
-				// Test parameters
 				algorithm.setInputParameter("populationSize", ts.settings.search.particles);
 				algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
 
 				problem.setPopulationSize(ts.settings.search.particles);
-				
-				//For huge problems
-				//problem.setEnumerate(false);
 
 				parameters = new HashMap<String, Object>();
 				parameters.put("probability", 0.9);
@@ -910,7 +906,6 @@ public class Task {
 				parameters = new HashMap<String, Object>();
 				parameters.put("probability", 1.0 / problem.getNumberOfVariables());
 				mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
-
 
 				parameters = null;
 				selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
@@ -923,30 +918,29 @@ public class Task {
 				plateau = problem.getPlateau();
 			}
 		} else {
-			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets, dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues, ts.settings.search, true);
-			
+			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets,
+					dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues,
+					ts.settings.search, true);
+
 			algorithm = new CMAES(problem);
 
-			//takes parameters from the fitter spec
-			
+			// takes parameters from the fitter spec
+
 			algorithm.setInputParameter("populationSize", spec.population);
-			
+
 			problem.setPopulationSize(spec.population);
-			
-			//For huge problems
-			//problem.setEnumerate(false);
-	
+
 			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
-	
+
 			algorithm.setInputParameter("maxEvaluations", max_evals);
-	
+
 			// Execute the optimization
 			algorithm.execute();
 			plateau = problem.getPlateau();
 		}
-		
-		//Write output
-		
+
+		// Write output
+
 		int counter = 1;
 		for (ExtendedModel model : plateau) {
 			this.sim_out = new PrintStream(
@@ -964,7 +958,7 @@ public class Task {
 			counter++;
 		}
 		System.out.println("Wrote " + plateau.size() + " models.");
-		
+
 	}
 	
 
