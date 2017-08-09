@@ -106,6 +106,8 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		LinkedList<Variable[]> nextStep = states;
 		PlateauModel best = null;
 		
+		boolean useConvergence = true;
+		
 		int noImprovement = 0;
 		int convergenceStop = 10;
 		ExecutorService executor;
@@ -149,7 +151,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			if (best != null && best.equals(plateau.first())) {
 				noImprovement++;
 				logger.info("Search reports no improvement in the last " + noImprovement + " search step(s).");
-				if(noImprovement >= convergenceStop) {
+				if(useConvergence && (noImprovement >= convergenceStop)) {
 					logger.info("Search completed. No improvement in " + convergenceStop + " conscutive search steps.");
 					break;
 				}
@@ -320,6 +322,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 			if (max_evals > 0) {
 				fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+				error = population.get(0).getObjective(0);
 			} else {
 				if (simulations == null) {
 					fitnessMeasures.put(objectiveFun.getName(), Double.POSITIVE_INFINITY);
@@ -332,16 +335,20 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			}
 
 			model.setFitnessMeasures(fitnessMeasures);
-			model.setFitnessMeasures(fitnessMeasures);
+
 
 		} catch (Exception e) {
 			logger.warning("Something went wrong. A model evaluation failed.");
 			failed = true;
 		}
+		
 
 		if (failed) {
+			error = Double.POSITIVE_INFINITY;
 			toReturn = Double.POSITIVE_INFINITY;
 		} else {
+			System.out.println(error);
+			
 			// Regularize the objective function!
 			double comp = 0;
 
@@ -368,15 +375,21 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 			toReturn = error;
 
+			System.out.println("Reg: " + error);
+			
 			synchronized (plateau) {
 				plateau.add(new PlateauModel(structure, model));
 				filterPlateau();
+				
+				if (error < minerror) {
+					minerror = error;
+				}
 			}
 			
-			if (error < minerror) {
-				minerror = error;
-			}
+
 		}
+		
+		
 		
 		synchronized (plateau) {
 			if (count % cLength == 0) {

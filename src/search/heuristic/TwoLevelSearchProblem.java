@@ -198,6 +198,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 
 			if (max_evals > 0) {
 				fitnessMeasures.put(objectiveFun.getName(), population.get(0).getObjective(0));
+				error = population.get(0).getObjective(0);
 			} else {
 				if (simulations == null) {
 					fitnessMeasures.put(objectiveFun.getName(), Double.POSITIVE_INFINITY);
@@ -217,6 +218,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		}
 
 		if (failed) {
+			error = Double.POSITIVE_INFINITY;
 			solution.setObjective(0, Double.POSITIVE_INFINITY);
 		} else {
 			// Regularize the objective function!

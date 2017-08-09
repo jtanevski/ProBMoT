@@ -65,8 +65,9 @@ public class Test {
 //		
 		//System.out.println(data.get());
 		
-		Library library = Traverse.addLibrary("GenTest.pbl");
-		Model model = Traverse.addIncompleteModel("GenTest.pbm");
+		Library library = Traverse.addLibrary("WholeAquaticEcosystem_notTested.pbl");
+		Model model = Traverse.addIncompleteModel("BledIncomplete.pbm");
+		
 //		ModelEnumerator search = new ModelEnumerator(new ExtendedModel(model.copy()));
 //		try {
 //			while(search.hasNextModel()) {
@@ -79,6 +80,9 @@ public class Test {
 //		}
 //		
 		//GeneticCodec ec = new GeneticCodec();
+		//ec.enumerate = false;
+		//System.out.println(ec.encode(new ExtendedModel(model), null));
+		
 		//System.out.println(ec.encode(new ExtendedModel(model.copy()), new OutputSpec()));
 	
 		

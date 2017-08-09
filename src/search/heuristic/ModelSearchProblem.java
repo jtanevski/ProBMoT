@@ -66,7 +66,7 @@ class ModelSearchProblem extends Problem {
 
 	protected static int count = 1;
 	protected Logger logger = Logger.getLogger("fitPerformance");
-	protected double minerror = Double.POSITIVE_INFINITY;
+	protected static double minerror = Double.POSITIVE_INFINITY;
 	
 	
 	protected final TreeSet<PlateauModel> plateau;
