@@ -996,51 +996,57 @@ public class Task {
 				} catch (FailedSimulationException ex) {
 					specificModel.setSuccessful(false);
 				}
+				
+				
 			}
 
-			this.sim_out = new PrintStream(FileUtils
-					.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo() + ".sim")));
-			for (int i = 0; i < datasets.size(); i++) {
-				out.println("// Model #" + search.getCounter() + " for dataset " + datasets.get(i).getFilepath());
-				ExtendedModel eModel = lmodels.get(i);
-				if (format.length == 1 && format[0].equals("c")) {
-					out.println(SimpleWriter.serialize(eModel.getModel(), new CSerializer()));
-				} else {
-					out.println(eModel);
-				}
-				if (fit) {
-
-					this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
-					try {
-						this.sim_out.println(eModel.getSimulations().get(i));
-					} catch (NullPointerException e) {
-						this.sim_out.println("FAILED SIMULATION");
+			if(lmodels == null) {
+				out.println(specificModel);
+			} else {
+				
+				this.sim_out = new PrintStream(FileUtils
+						.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo() + ".sim")));
+				
+				for (int i = 0; i < datasets.size(); i++) {
+					out.println("// Model #" + search.getCounter() + " for dataset " + datasets.get(i).getFilepath());
+					ExtendedModel eModel = lmodels.get(i);
+					if (format.length == 1 && format[0].equals("c")) {
+						out.println(SimpleWriter.serialize(eModel.getModel(), new CSerializer()));
+					} else {
+						out.println(eModel);
 					}
-
-				}
-			}
-
-			if (ts.settings.evaluation != null && fit) {
-				if (ts.settings.evaluation.test != null && !ts.settings.evaluation.test.isEmpty()) {
-					for (int i = 0; i < lmodels.size(); i++) {
-						ExtendedModel eModel = lmodels.get(i);
-
-						this.eval_out = new PrintStream(FileUtils.openOutputStream(
-								new File(this.evaldir + "/Model#" + eModel.getModelNo() + "_" + i + ".eval")));
-
-						for (int j = 0; j < testDatasets.size(); j++) {
-							this.eval_out.println("DATASET_ID:" + testDatasets.get(j).getId());
-							try {
-								this.eval_out.println(eModel.getEvaluations().get(j));
-							} catch (NullPointerException e) {
-								this.eval_out.println("FAILED SIMULATION");
-							}
+					if (fit) {
+	
+						this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+						try {
+							this.sim_out.println(eModel.getSimulations().get(i));
+						} catch (NullPointerException e) {
+							this.sim_out.println("FAILED SIMULATION");
 						}
-
+	
 					}
 				}
 			}
-
+				if (ts.settings.evaluation != null && fit) {
+					if (ts.settings.evaluation.test != null && !ts.settings.evaluation.test.isEmpty()) {
+						for (int i = 0; i < lmodels.size(); i++) {
+							ExtendedModel eModel = lmodels.get(i);
+	
+							this.eval_out = new PrintStream(FileUtils.openOutputStream(
+									new File(this.evaldir + "/Model#" + eModel.getModelNo() + "_" + i + ".eval")));
+	
+							for (int j = 0; j < testDatasets.size(); j++) {
+								this.eval_out.println("DATASET_ID:" + testDatasets.get(j).getId());
+								try {
+									this.eval_out.println(eModel.getEvaluations().get(j));
+								} catch (NullPointerException e) {
+									this.eval_out.println("FAILED SIMULATION");
+								}
+							}
+	
+						}
+					}
+				}
 			logger.info("Model #" + search.getCounter() + (specificModel.isSuccessful() ? "" : " failed"));
 		} while (search.hasNextModel());
 

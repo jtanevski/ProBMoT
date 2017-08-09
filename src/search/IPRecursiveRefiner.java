@@ -201,7 +201,7 @@ public class IPRecursiveRefiner {
 
 	public RefState state;
 	
-	private final Random rand = new Random(42); //always use the same random seed for reproducibility and for process matching within the heuristic search
+	private static final Random rand = new Random(42); //always use the same random seed for reproducibility and for process matching within the heuristic search
 
 	/**
 	 *

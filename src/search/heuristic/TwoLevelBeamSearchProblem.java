@@ -347,8 +347,6 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			error = Double.POSITIVE_INFINITY;
 			toReturn = Double.POSITIVE_INFINITY;
 		} else {
-			System.out.println(error);
-			
 			// Regularize the objective function!
 			double comp = 0;
 
@@ -374,8 +372,6 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 			error = lambda * error + (1 - lambda) * comp;
 
 			toReturn = error;
-
-			System.out.println("Reg: " + error);
 			
 			synchronized (plateau) {
 				plateau.add(new PlateauModel(structure, model));

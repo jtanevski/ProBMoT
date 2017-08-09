@@ -232,7 +232,7 @@ class GeneticCodec extends HeuristicCodec {
 		try {
 			 toReturn = (new ModelEnumerator(extendedModel.copy())).nextModel();
 		} catch (Exception e) {
-			
+			e.printStackTrace();
 		}
 		
 		return toReturn; 
