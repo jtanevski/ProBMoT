@@ -4,6 +4,7 @@ import java.io.*;
 import java.lang.reflect.*;
 import java.net.URISyntaxException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 import java.util.logging.FileHandler;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
@@ -11,10 +12,15 @@ import java.util.logging.SimpleFormatter;
 import javax.xml.bind.*;
 
 import jmetal.core.*;
+import jmetal.metaheuristics.singleObjective.cmaes.CMAES;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.*;
+import jmetal.metaheuristics.singleObjective.geneticAlgorithm.pgGA;
 import jmetal.operators.crossover.*;
+import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.*;
 import jmetal.util.*;
+import jmetal.util.parallel.IParallelEvaluator;
+import jmetal.util.parallel.MultithreadedEvaluator;
 
 import org.antlr.runtime.*;
 import org.apache.commons.configuration.*;
@@ -24,6 +30,9 @@ import org.slf4j.*;
 import org.xml.sax.*;
 
 import search.*;
+import search.heuristic.TwoLevelBeamSearchProblem;
+import search.heuristic.TwoLevelSearchProblem;
+import search.heuristic.SingleLevelSearchProblem;
 import serialize.*;
 import struct.inst.*;
 import struct.temp.*;
@@ -81,6 +90,7 @@ public class Task {
     
 	public Task(TaskSpec ts) throws IOException, RecognitionException, InstantiationException, IllegalAccessException,
 			NoSuchFieldException, InvocationTargetException, NoSuchMethodException {
+				
 		this.ts = ts;
 
 		if (ts.library == null) {
@@ -378,6 +388,7 @@ public class Task {
 				this.evaldir.mkdir();
 			}
 			break;
+		case HEURISTIC_SEARCH:
 		case EXHAUSTIVE_SEARCH:
 			this.outdir = new File(s);
 			if (!outdir.isDirectory()) {
@@ -420,7 +431,7 @@ public class Task {
 	public void perform() throws IOException, InterruptedException, ConfigurationException, JAXBException, SAXException,
 			InstantiationException, IllegalAccessException, ClassNotFoundException, RecognitionException, JMException,
 			FailedSimulationException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
-			SecurityException, URISyntaxException {
+			SecurityException, URISyntaxException{
 
 		Task.logger.info("Task started");
 		switch (ts.command) {
@@ -433,6 +444,9 @@ public class Task {
 			break;
 		case WRITE_EQ:
 			writeEQ();
+			break;
+		case HEURISTIC_SEARCH:
+			heuristicSearch();
 			break;
 		case EXHAUSTIVE_SEARCH:
 			enumerateModel(true);
@@ -470,7 +484,8 @@ public class Task {
 
     /* EVALUATION BLOCK */
     
-    //Evaluates a single model - see simulateModel
+
+	//Evaluates a single model - see simulateModel
 	private void evaluateModels() throws InstantiationException, IllegalAccessException, ClassNotFoundException,
 			FailedSimulationException, RecognitionException, IOException {
 
@@ -803,6 +818,149 @@ public class Task {
 			this.out.println(eModel);
 		}
 	}
+	
+	
+	
+	private void heuristicSearch() throws SecurityException, IOException, InstantiationException,
+			IllegalAccessException, IllegalArgumentException, InvocationTargetException, NoSuchMethodException,
+			ClassNotFoundException, JMException, InterruptedException {
+		if (this.incompleteModel == null) {
+			throw new RuntimeException(
+					"Cannot perform search because an incomplete model was not provided. Use the <incomplete> tag to specify one");
+		}
+
+		ExtendedModel ext = new ExtendedModel(incompleteModel);
+
+		// create fitperformance logger
+		Logger flogger = null;
+
+		flogger = Logger.getLogger("fitPerformance");
+		flogger.setUseParentHandlers(false);
+		FileHandler fh = new FileHandler(ts.outputFilepath + "/" + ts.filename + "_fitPerformace" + ".log");
+		fh.setFormatter(new SimpleFormatter());
+		flogger.addHandler(fh);
+
+		Algorithm algorithm = null;
+		DESpec spec = (DESpec) ts.settings.fitter;
+
+		// ensure repeatability
+		MersenneTwisterFastFix msf = new MersenneTwisterFastFix();
+		msf.setSeed(spec.seed);
+		PseudoRandom.setRandomGenerator(msf);
+
+		// Fixed due to regularization in the single level problem
+		TrajectoryObjectiveFunction objectiveFun = new RelativeRMSEObjectiveFunctionMultiDataset(datasets, outsToCols);
+
+		ArrayList<ExtendedModel> plateau = new ArrayList<ExtendedModel>();
+
+		// Default is two level genetic
+
+		boolean level2 = true;
+		boolean beam = false;
+		if (ts.settings.search.level.contains("1"))
+			level2 = false;
+		if (ts.settings.search.level.contains("b"))
+			beam = true;
+
+		if (level2) {
+			if (beam) {
+				// enumerate false for huge problems
+				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets,
+						dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols,
+						(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
+						ts.settings.search, false);
+
+				// For huge problems
+
+				beamsearch.setbeamWidth(ts.settings.search.particles);
+
+				beamsearch.execute();
+
+				plateau = beamsearch.getPlateau();
+
+			} else {
+
+				TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
+						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
+						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
+
+				int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
+				IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
+
+				algorithm = new pgGA(problem, evaluator);
+
+				HashMap<String, Object> parameters;
+				Operator crossover;
+				Operator mutation;
+				Operator selection;
+
+				algorithm.setInputParameter("populationSize", ts.settings.search.particles);
+				algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
+
+				problem.setPopulationSize(ts.settings.search.particles);
+
+				parameters = new HashMap<String, Object>();
+				parameters.put("probability", 0.9);
+				crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);
+
+				parameters = new HashMap<String, Object>();
+				parameters.put("probability", 1.0 / problem.getNumberOfVariables());
+				mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
+
+				parameters = null;
+				selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
+
+				algorithm.addOperator("crossover", crossover);
+				algorithm.addOperator("mutation", mutation);
+				algorithm.addOperator("selection", selection);
+
+				algorithm.execute();
+				plateau = problem.getPlateau();
+			}
+		} else {
+			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets,
+					dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues,
+					ts.settings.search, true);
+
+			algorithm = new CMAES(problem);
+
+			// takes parameters from the fitter spec
+
+			algorithm.setInputParameter("populationSize", spec.population);
+
+			problem.setPopulationSize(spec.population);
+
+			Integer max_evals = spec.evaluations * (problem.getNumberOfVariables());
+
+			algorithm.setInputParameter("maxEvaluations", max_evals);
+
+			// Execute the optimization
+			algorithm.execute();
+			plateau = problem.getPlateau();
+		}
+
+		// Write output
+
+		int counter = 1;
+		for (ExtendedModel model : plateau) {
+			this.sim_out = new PrintStream(
+					FileUtils.openOutputStream(new File(this.simdir + "/Model" + counter + ".sim")));
+			for (int i = 0; i < datasets.size(); i++) {
+				out.println("// Model" + counter + " for dataset " + datasets.get(i).getFilepath());
+				out.println(model);
+				this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+				try {
+					this.sim_out.println(model.getSimulations().get(i));
+				} catch (NullPointerException e) {
+					this.sim_out.println("FAILED SIMULATION");
+				}
+			}
+			counter++;
+		}
+		System.out.println("Wrote " + plateau.size() + " models.");
+
+	}
+	
 
 	private void enumerateModel(boolean fit, String... format)
 			throws IOException, InterruptedException, ConfigurationException, RecognitionException, JMException,
@@ -838,51 +996,57 @@ public class Task {
 				} catch (FailedSimulationException ex) {
 					specificModel.setSuccessful(false);
 				}
+				
+				
 			}
 
-			this.sim_out = new PrintStream(FileUtils
-					.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo() + ".sim")));
-			for (int i = 0; i < datasets.size(); i++) {
-				out.println("// Model #" + search.getCounter() + " for dataset " + datasets.get(i).getFilepath());
-				ExtendedModel eModel = lmodels.get(i);
-				if (format.length == 1 && format[0].equals("c")) {
-					out.println(SimpleWriter.serialize(eModel.getModel(), new CSerializer()));
-				} else {
-					out.println(eModel);
-				}
-				if (fit) {
-
-					this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
-					try {
-						this.sim_out.println(eModel.getSimulations().get(i));
-					} catch (NullPointerException e) {
-						this.sim_out.println("FAILED SIMULATION");
+			if(lmodels == null) {
+				out.println(specificModel);
+			} else {
+				
+				this.sim_out = new PrintStream(FileUtils
+						.openOutputStream(new File(this.simdir + "/Model#" + lmodels.get(0).getModelNo() + ".sim")));
+				
+				for (int i = 0; i < datasets.size(); i++) {
+					out.println("// Model #" + search.getCounter() + " for dataset " + datasets.get(i).getFilepath());
+					ExtendedModel eModel = lmodels.get(i);
+					if (format.length == 1 && format[0].equals("c")) {
+						out.println(SimpleWriter.serialize(eModel.getModel(), new CSerializer()));
+					} else {
+						out.println(eModel);
 					}
-
-				}
-			}
-
-			if (ts.settings.evaluation != null && fit) {
-				if (ts.settings.evaluation.test != null && !ts.settings.evaluation.test.isEmpty()) {
-					for (int i = 0; i < lmodels.size(); i++) {
-						ExtendedModel eModel = lmodels.get(i);
-
-						this.eval_out = new PrintStream(FileUtils.openOutputStream(
-								new File(this.evaldir + "/Model#" + eModel.getModelNo() + "_" + i + ".eval")));
-
-						for (int j = 0; j < testDatasets.size(); j++) {
-							this.eval_out.println("DATASET_ID:" + testDatasets.get(j).getId());
-							try {
-								this.eval_out.println(eModel.getEvaluations().get(j));
-							} catch (NullPointerException e) {
-								this.eval_out.println("FAILED SIMULATION");
-							}
+					if (fit) {
+	
+						this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+						try {
+							this.sim_out.println(eModel.getSimulations().get(i));
+						} catch (NullPointerException e) {
+							this.sim_out.println("FAILED SIMULATION");
 						}
-
+	
 					}
 				}
 			}
-
+				if (ts.settings.evaluation != null && fit) {
+					if (ts.settings.evaluation.test != null && !ts.settings.evaluation.test.isEmpty()) {
+						for (int i = 0; i < lmodels.size(); i++) {
+							ExtendedModel eModel = lmodels.get(i);
+	
+							this.eval_out = new PrintStream(FileUtils.openOutputStream(
+									new File(this.evaldir + "/Model#" + eModel.getModelNo() + "_" + i + ".eval")));
+	
+							for (int j = 0; j < testDatasets.size(); j++) {
+								this.eval_out.println("DATASET_ID:" + testDatasets.get(j).getId());
+								try {
+									this.eval_out.println(eModel.getEvaluations().get(j));
+								} catch (NullPointerException e) {
+									this.eval_out.println("FAILED SIMULATION");
+								}
+							}
+	
+						}
+					}
+				}
 			logger.info("Model #" + search.getCounter() + (specificModel.isSuccessful() ? "" : " failed"));
 		} while (search.hasNextModel());
 

@@ -136,6 +136,8 @@ public class CVodeSimulator {
 		}
 
 //		CVodeSimulator.logger.info("Simulation started");
+		//SHUT UP CVODE!
+		CvodeLibrary.CVodeSetErrFile(cvode, null);
 
 		for (int i = 1; i < time.length; i++) {
 			simulated[0][i] = time[i];
@@ -162,7 +164,7 @@ public class CVodeSimulator {
 				case CV_ILL_INPUT:
 				case CV_NO_MALLOC:
 				case CV_TOO_CLOSE:
-					System.err.println(errorCode + " " + tret.getDouble() + " " + time[i]);
+					//System.err.println(errorCode + " " + tret.getDouble() + " " + time[i]);
 
 					throw new FailedSimulationException();
 			}

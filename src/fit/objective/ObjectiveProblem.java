@@ -117,7 +117,7 @@ public class ObjectiveProblem extends Problem {
 						this.initialValues[i] = Double.NaN;
 						initialNamesToIndexes.put(name, i);
 					} else {
-						System.out.println("WARNING: Endgenous variable " + name + " is not mapped to dataset column. Initial value will be fitted.");
+						System.out.println("WARNING: Endogenous variable " + name + " is not mapped to dataset column. Initial value will be fitted.");
 						this.initialValues[i] = Double.NaN;
 						initialIndexes.add(i);
 					}
@@ -367,8 +367,8 @@ public class ObjectiveProblem extends Problem {
 			} catch (FailedSimulationException ex) {
 				solution.setObjective(0, Double.POSITIVE_INFINITY);
 				failed = true;
-				Task.logger.debug("Evaluation " + count
-						+ " failed. Assuming infinite error.");
+				//Task.logger.debug("Evaluation " + count
+				//		+ " failed. Assuming infinite error.");
 				break;
 			}
 		}
@@ -402,14 +402,14 @@ public class ObjectiveProblem extends Problem {
 			}
 		}
 
-		if (count % 1000 == 0) {
-			Task.logger.debug("Evaluation: " + count);
-		}
-		
-		//write hypercube points and minimal error
-		if (count % populationSize == 0 ){
-			logger.info(Double.toString(minerror));
-		}
+//		if (count % 1000 == 0) {
+//			Task.logger.debug("Evaluation: " + count);
+//		}
+//		
+//		//write hypercube points and minimal error
+//		if (count % populationSize == 0 ){
+//			logger.info(Double.toString(minerror));
+//		}
 
 		count++;
 		

@@ -17,4 +17,7 @@ public class Settings {
 	
 	@XmlElement
 	public EnsembleSpec ensemble;
+	
+	@XmlElement
+	public SearchSpec search;
 }
