@@ -106,7 +106,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		LinkedList<Variable[]> nextStep = states;
 		PlateauModel best = null;
 		
-		boolean useConvergence = true;
+		boolean useConvergence = false;
 		
 		int noImprovement = 0;
 		int convergenceStop = 10;
@@ -152,13 +152,16 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 				noImprovement++;
 				logger.info("Search reports no improvement in the last " + noImprovement + " search step(s).");
 				if(useConvergence && (noImprovement >= convergenceStop)) {
-					logger.info("Search completed. No improvement in " + convergenceStop + " conscutive search steps.");
+					logger.info("Search completed. No improvement in " + convergenceStop + " consecutive search steps.");
 					break;
 				}
 			} else {
 				noImprovement = 0;
 				best = plateau.first();
 			}
+			
+			//max evaluations stop criterion
+			if(count>=searchSpec.maxevaluations) { logger.info("Search completed. Maximum number of evaluations exceeded."); break; }
 			
 			//concurrency reasons
 			Map<Variable[], Double> beams = sortByValue(beam);

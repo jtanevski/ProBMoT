@@ -1,11 +1,18 @@
 package search.heuristic;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import java.util.concurrent.TimeUnit;
 
 import org.antlr.runtime.RecognitionException;
 
@@ -16,14 +23,14 @@ import fit.objective.RMSEMultiDataset;
 import fit.objective.TrajectoryObjectiveFunction;
 import jmetal.core.Algorithm;
 import jmetal.core.Operator;
-import jmetal.core.Solution;
 import jmetal.core.SolutionSet;
 import jmetal.core.Variable;
-import jmetal.encodings.solutionType.IntSolutionType;
+import jmetal.encodings.variable.Int;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.DE;
 import jmetal.operators.crossover.CrossoverFactory;
 import jmetal.operators.selection.SelectionFactory;
 import jmetal.util.JMException;
+import jmetal.util.PseudoRandom;
 import task.Task;
 import temp.Dataset;
 import temp.ExtendedModel;
@@ -38,17 +45,16 @@ import xml.InitialValuesSpec;
 import xml.OutputSpec;
 import xml.SearchSpec;
 
-public class TwoLevelSearchProblem extends ModelSearchProblem {
-
+public class RandomSearchProblem extends ModelSearchProblem{
+	
 	private int cLength;
-
-	private Map<PlateauModel, Double> seen;
-
-	public TwoLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
+	
+	
+	public RandomSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
 			BiMap<String, String> outsToCols, BiMap<String, String> weightsToCols, CVODESpec spec,
 			FitterSpec fitterSpec, InitialValuesSpec initialValuesSpec, SearchSpec searchSpec, boolean enumerate) {
-		
+
 		super(extendedModel,outputSpec,datasets,dimsToCols,endosToCols, exosToCols, outsToCols, weightsToCols, spec, fitterSpec, initialValuesSpec, searchSpec, enumerate);
 		
 		cLength = codec.code.size();
@@ -64,39 +70,50 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			lowerLimit_[i] = 1;
 			upperLimit_[i] = codec.code.get(i);
 		}
-
-		this.numberOfConstraints_ = 0; // No constraints
-		this.numberOfObjectives_ = 1; // Single-objective optimization
-
-
-		// Integer solution
-		solutionType_ = new IntSolutionType(this);
-
-		seen = Collections.synchronizedMap(new HashMap<PlateauModel, Double>());
-
+		
 	}
+	
+	public void execute() throws JMException, InterruptedException{
+		
+		ExecutorService executor = Executors.newFixedThreadPool(Math.max(2,searchSpec.threads));
 
-	@Override
-	public void evaluate(Solution solution) throws JMException {
-		Variable[] structure = solution.getDecisionVariables();
+		for (int m = 0; m < searchSpec.maxevaluations; m++) {
+
+			executor.execute(new Runnable() {
+				@Override
+				public void run() {
+					try {
+						// generate random solution
+						Variable[] randomState = new Variable[numberOfVariables_];
+
+						for (int i = 0; i < numberOfVariables_; i++) {
+							randomState[i] = new Int(PseudoRandom.randInt((int) lowerLimit_[i], (int) upperLimit_[i]),
+									(int) lowerLimit_[i], (int) upperLimit_[i]);
+						}
+
+						evaluate(randomState);
+						
+					} catch (JMException e) {
+					}
+				}
+			});
+		}
+		
+		executor.shutdown();
+		executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+		
+	}
+	
+	public double evaluate(Variable[] structure) throws JMException {
+		
 		ExtendedModel model = codec.decode(structure);
 		boolean failed = false;
 
-		// Careful! The seen map should not be sorted because the fitness of the empty
-		// extendedmodel is null. It can be used to efficiently store seen structures
-		// only.
-		PlateauModel isSeen = new PlateauModel(structure, model);
-		
-	
-		if (seen.containsKey(isSeen)) {
-			solution.setObjective(0, seen.get(isSeen));
-			return;
-		} else {
-			seen.put(isSeen, Double.POSITIVE_INFINITY);
-		}
-
 		Output output = null;
 		Double error = 0.0;
+		
+		Double toReturn = null;
+		
 		try {
 
 			IQGraph graph = new IQGraph(model.getModel());
@@ -212,54 +229,55 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 
 			model.setFitnessMeasures(fitnessMeasures);
 
+
 		} catch (Exception e) {
 			logger.warning("Something went wrong. A model evaluation failed.");
 			failed = true;
 		}
+		
 
 		if (failed) {
 			error = Double.POSITIVE_INFINITY;
-			solution.setObjective(0, Double.POSITIVE_INFINITY);
+			toReturn = Double.POSITIVE_INFINITY;
 		} else {
 			// Regularize the objective function!
-			double comp = 0;			
-			
-			//using number of parameters
-			if(searchSpec.regularization.contains("param")) {
+			double comp = 0;
+
+			// using number of parameters
+			if (searchSpec.regularization.contains("param")) {
 				comp = output.graph.reachParameters.size();
-				if(codec.enumerate) {
+				if (codec.enumerate) {
 					comp /= codec.internalEnumeratingCodec.pCompHigh;
 				}
 			}
-			
-			// or fragments
-			if(searchSpec.regularization.contains("frag")) {
-				for(IVNode var : output.graph.reachVariables.valueList()) comp += var.inputIQs.size();
-				if(codec.enumerate) {
+
+			if (searchSpec.regularization.contains("frag")) {
+				for (IVNode var : output.graph.reachVariables.valueList())
+					comp += var.inputIQs.size();
+				if (codec.enumerate) {
 					comp /= codec.internalEnumeratingCodec.fCompHigh;
 				}
 			}
-			
+
 			double lambda = searchSpec.lambda;
-			if(lambda > 1 || lambda < 0) lambda = 0.5;
-			error = lambda*error+(1-lambda)*comp;
-			
-			solution.setObjective(0, error);
-			
-			seen.replace(isSeen, error);
+			if (lambda > 1 || lambda < 0)
+				lambda = 0.5;
+			error = lambda * error + (1 - lambda) * comp;
 
-
+			toReturn = error;
+			
 			synchronized (plateau) {
 				plateau.add(new PlateauModel(structure, model));
-			
 				filterPlateau();
+				
+				if (error < minerror) {
+					minerror = error;
+				}
 			}
+			
 
-			if (error < minerror) {
-				minerror = error;
-			}
 		}
-
+		
 		synchronized (plateau) {
 			if (count % cLength == 0) {
 				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
@@ -273,6 +291,8 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 
 			count++;
 		}
+
+		return toReturn;
 
 	}
 

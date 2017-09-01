@@ -32,6 +32,7 @@ import org.xml.sax.*;
 import search.*;
 import search.heuristic.TwoLevelBeamSearchProblem;
 import search.heuristic.TwoLevelSearchProblem;
+import search.heuristic.RandomSearchProblem;
 import search.heuristic.SingleLevelSearchProblem;
 import serialize.*;
 import struct.inst.*;
@@ -857,65 +858,83 @@ public class Task {
 
 		boolean level2 = true;
 		boolean beam = false;
+		boolean random = false;
+		
 		if (ts.settings.search.level.contains("1"))
 			level2 = false;
 		if (ts.settings.search.level.contains("b"))
 			beam = true;
+		if (ts.settings.search.level.contains("r"))
+			random = true;
 
 		if (level2) {
-			if (beam) {
-				// enumerate false for huge problems
-				TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets,
+			if (random) {
+				
+				RandomSearchProblem randomsearch = new RandomSearchProblem(ext, ts.output, datasets,
 						dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols,
 						(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
 						ts.settings.search, false);
-
-				// For huge problems
-
-				beamsearch.setbeamWidth(ts.settings.search.particles);
-
-				beamsearch.execute();
-
-				plateau = beamsearch.getPlateau();
+				
+				randomsearch.execute();
+				
+				plateau = randomsearch.getPlateau();
 
 			} else {
 
-				TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
-						endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-						ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
+				if (beam) {
+					// enumerate false for huge problems
+					TwoLevelBeamSearchProblem beamsearch = new TwoLevelBeamSearchProblem(ext, ts.output, datasets,
+							dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols,
+							(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
+							ts.settings.search, false);
 
-				int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
-				IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
+					// For huge problems
 
-				algorithm = new pgGA(problem, evaluator);
+					beamsearch.setbeamWidth(ts.settings.search.particles);
 
-				HashMap<String, Object> parameters;
-				Operator crossover;
-				Operator mutation;
-				Operator selection;
+					beamsearch.execute();
 
-				algorithm.setInputParameter("populationSize", ts.settings.search.particles);
-				algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
+					plateau = beamsearch.getPlateau();
 
-				problem.setPopulationSize(ts.settings.search.particles);
+				} else {
 
-				parameters = new HashMap<String, Object>();
-				parameters.put("probability", 0.9);
-				crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);
+					TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
+							endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
+							ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
 
-				parameters = new HashMap<String, Object>();
-				parameters.put("probability", 1.0 / problem.getNumberOfVariables());
-				mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
+					int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
+					IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
 
-				parameters = null;
-				selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
+					algorithm = new pgGA(problem, evaluator);
 
-				algorithm.addOperator("crossover", crossover);
-				algorithm.addOperator("mutation", mutation);
-				algorithm.addOperator("selection", selection);
+					HashMap<String, Object> parameters;
+					Operator crossover;
+					Operator mutation;
+					Operator selection;
 
-				algorithm.execute();
-				plateau = problem.getPlateau();
+					algorithm.setInputParameter("populationSize", ts.settings.search.particles);
+					algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
+
+					problem.setPopulationSize(ts.settings.search.particles);
+
+					parameters = new HashMap<String, Object>();
+					parameters.put("probability", 0.9);
+					crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);
+
+					parameters = new HashMap<String, Object>();
+					parameters.put("probability", 1.0 / problem.getNumberOfVariables());
+					mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
+
+					parameters = null;
+					selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
+
+					algorithm.addOperator("crossover", crossover);
+					algorithm.addOperator("mutation", mutation);
+					algorithm.addOperator("selection", selection);
+
+					algorithm.execute();
+					plateau = problem.getPlateau();
+				}
 			}
 		} else {
 			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets,
