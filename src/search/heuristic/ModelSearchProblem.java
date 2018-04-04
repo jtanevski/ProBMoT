@@ -1,6 +1,8 @@
 package search.heuristic;
 
+import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -14,6 +16,7 @@ import java.util.TreeSet;
 import java.util.logging.Logger;
 
 import org.antlr.runtime.RecognitionException;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.ArrayUtils;
 
 import com.google.common.collect.BiMap;
@@ -27,9 +30,12 @@ import fit.OutputModel;
 import fit.objective.TrajectoryObjectiveFunction;
 import jmetal.core.Problem;
 import jmetal.core.Solution;
+import jmetal.core.Variable;
+import jmetal.encodings.variable.Int;
 import jmetal.util.JMException;
 import struct.inst.IV;
 import struct.inst.Model;
+import task.Task;
 import temp.Dataset;
 import temp.ExtendedModel;
 import temp.IQGraph;
@@ -68,8 +74,18 @@ class ModelSearchProblem extends Problem {
 	protected Logger logger = Logger.getLogger("fitPerformance");
 	protected static double minerror = Double.POSITIVE_INFINITY;
 	
+	protected File outdir;
+	
+	private double modifier;
+	
+	//Supporting two types of plateau structures temporarily
+	//The Lite version is more memory efficient but operations with it are cpu intensive
+	//Lite is used for all two level searches, Regular for single level
 	
 	protected final TreeSet<PlateauModel> plateau;
+	protected final TreeSet<PlateauModelLite> plateauLite;
+	
+	
 
 	public ModelSearchProblem(ExtendedModel incompleteModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
@@ -101,6 +117,10 @@ class ModelSearchProblem extends Problem {
 		plateau = new TreeSet<PlateauModel>();
 		
 		
+		plateauLite = new TreeSet<PlateauModelLite>();
+		
+		modifier = searchSpec.plateau;
+		if(modifier<1) modifier += 1;
 
 	}
 
@@ -171,8 +191,8 @@ class ModelSearchProblem extends Problem {
 		Iterator<PlateauModel> pIterator = plateau.iterator();
 		PlateauModel best = pIterator.next();
 		
-		double modifier = searchSpec.plateau;
-		if(modifier<1) modifier += 1;
+		//double modifier = searchSpec.plateau;
+		//if(modifier<1) modifier += 1;
 		
 		int counter= 0;
 		while (pIterator.hasNext()) {
@@ -207,10 +227,69 @@ class ModelSearchProblem extends Problem {
 	
 	}
 	
+	
+	protected void plateauFilterAndAdd(PlateauModel plateauModel) {
+		
+		double error = plateauModel.eModel.getFitnessMeasures().get(objFunction.getName());
+		
+		if(plateau.isEmpty()) plateau.add(plateauModel);
+		else {
+			double minError = plateau.first().eModel.getFitnessMeasures().get(objFunction.getName());
+			double maxError = plateau.last().eModel.getFitnessMeasures().get(objFunction.getName());
+			
+			if (error <= minError) {
+				//add at the beginning of the plateau
+				if (error*modifier < minError) plateau.clear();
+				plateau.add(plateauModel);
+			} else {
+				//add in the middle or at the end
+				if(error <= maxError*modifier) plateau.add(plateauModel);
+			}
+		}
+		
+	}
+	
+	protected void plateauFilterAndAdd(PlateauModelLite plateauModel) {
+			
+			double error = plateauModel.error;
+			
+			if(plateauLite.isEmpty()) plateauLite.add(plateauModel);
+			else {
+				double minError = plateauLite.first().error;
+				double maxError = plateauLite.last().error;
+				
+				if (error <= minError) {
+					//add at the beginning of the plateau
+					if (error*modifier < minError) plateauLite.clear();
+					plateauLite.add(plateauModel);
+				} else {
+					//add in the middle or at the end
+					if(error <= maxError*modifier) plateauLite.add(plateauModel);
+				}
+			}
+			
+		}
+	
+	
 	public ArrayList<ExtendedModel> getPlateau() {
 		ArrayList<ExtendedModel> toReturn = new ArrayList<ExtendedModel>();
-		for (PlateauModel p : plateau)
-			toReturn.add(p.eModel);
+		if(plateau.isEmpty()) {
+			for(PlateauModelLite p: plateauLite) {
+				Variable[] s = new Variable[p.structure.length];
+				for(int i=0; i<p.structure.length; i++)	s[i] = new Int(p.structure[i], p.structure[i], p.structure[i]);
+				
+				ExtendedModel eModel = codec.decode(s);
+				for(String ivName : p.initials.keySet()) eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
+				for(String icName : p.params.keySet()) eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
+				
+				eModel.setOutputConstants(p.outputConsts);
+				
+				toReturn.add(eModel);
+			}
+		} else {
+			for (PlateauModel p : plateau)
+				toReturn.add(p.eModel);
+		}
 		return toReturn;
 	}
 	
@@ -233,5 +312,54 @@ class ModelSearchProblem extends Problem {
 	public void setPopulationSize(int populationSize) {
 		this.populationSize = populationSize;
 	}
+	
+	public void setTempOut(File outdir) {
+		this.outdir = outdir;
+	}
+	
+	protected void writePlateau() {
+		if(outdir != null) {
+			int counter = 1;
+			PrintStream out = null;
+			try {
+				out = new PrintStream(FileUtils.openOutputStream(new File(outdir + "/Models_temp.out")));
+				
+				if(plateau.isEmpty()) {
+					for(PlateauModelLite p: plateauLite) {
+						Variable[] s = new Variable[p.structure.length];
+						for(int i=0; i<p.structure.length; i++)	s[i] = new Int(p.structure[i], p.structure[i], p.structure[i]);
+						
+						ExtendedModel eModel = codec.decode(s);
+						for(String ivName : p.initials.keySet()) eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
+						for(String icName : p.params.keySet()) eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
+						
+						eModel.setOutputConstants(p.outputConsts);
+						
+						out.println("// Model" + (counter++));
+						out.println(eModel);
+						out.flush();
+					}
+					
+				} else {
+			
+					for (ExtendedModel model : getPlateau()) {
+						out.println("// Model" + (counter++));
+						out.println(model);
+						out.flush();
+					}
+				}
+				
+				out.close();
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+			finally {
+				if(out != null) out.close();
+			}
+			
+		}
+	}
+	
 	
 }

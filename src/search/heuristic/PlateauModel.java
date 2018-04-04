@@ -1,12 +1,13 @@
 package search.heuristic;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import jmetal.core.Variable;
 import jmetal.util.JMException;
 import temp.ExtendedModel;
 
-public class PlateauModel implements Comparable<PlateauModel> {
+public class PlateauModel implements Comparable<PlateauModel>,  Serializable{
 	Integer[] structure;
 	ExtendedModel eModel;
 	

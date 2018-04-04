@@ -42,7 +42,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 
 	private int cLength;
 
-	private Map<PlateauModel, Double> seen;
+	private Map<PlateauModelLite, Double> seen;
 
 	public TwoLevelSearchProblem(ExtendedModel extendedModel, OutputSpec outputSpec, List<Dataset> datasets,
 			BiMap<String, String> dimsToCols, BiMap<String, String> endosToCols, BiMap<String, String> exosToCols,
@@ -72,7 +72,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		// Integer solution
 		solutionType_ = new IntSolutionType(this);
 
-		seen = Collections.synchronizedMap(new HashMap<PlateauModel, Double>());
+		seen = Collections.synchronizedMap(new HashMap<PlateauModelLite, Double>());
 
 	}
 
@@ -85,8 +85,13 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		// Careful! The seen map should not be sorted because the fitness of the empty
 		// extendedmodel is null. It can be used to efficiently store seen structures
 		// only.
-		PlateauModel isSeen = new PlateauModel(structure, model);
+		//PlateauModel isSeen = new PlateauModel(structure, model);
 		
+		Map<String,Double> initials = new LinkedHashMap<String,Double>();
+		Map<String,Double> params = new LinkedHashMap<String,Double>();
+		Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
+		
+		PlateauModelLite isSeen = new PlateauModelLite(structure, null, null, null, -1);
 	
 		if (seen.containsKey(isSeen)) {
 			solution.setObjective(0, seen.get(isSeen));
@@ -166,15 +171,17 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 					String ivName = problem.initialFitted.get(indexval).id;
 					Double iVal = variables[i + problem.initialIndexes.size()].getValue();
 					model.getModel().allVars.get(ivName).initial = iVal;
+					initials.put(ivName, iVal);
 				}
 	
 				for (int i = 0; i < problem.modelFitted.size(); i++) {
 					String icName = problem.modelFitted.get(i).id;
 					Double icValue = variables[problem.totalInitialToFit + i].getValue();
 					model.getModel().allConsts.get(icName).value = icValue;
+					params.put(icName, icValue);
 				}
 	
-				Map<String, Double> outputConsts = new LinkedHashMap<String, Double>();
+				
 				for (int i = 0; i < problem.outputFitted.size(); i++) {
 					String outputName = output.fitted.getKey(i);
 					Double outputValue = variables[problem.totalInitialToFit + problem.modelFitted.size() + i].getValue();
@@ -220,6 +227,11 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 		if (failed) {
 			error = Double.POSITIVE_INFINITY;
 			solution.setObjective(0, Double.POSITIVE_INFINITY);
+			
+			//update fitness
+			Map<String, Double> fitnessMeasures = model.getFitnessMeasures();
+			fitnessMeasures.put(objFunction.getName(), error);
+			model.setFitnessMeasures(fitnessMeasures);
 		} else {
 			// Regularize the objective function!
 			double comp = 0;			
@@ -246,13 +258,22 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			
 			solution.setObjective(0, error);
 			
+			//update fitness
+			Map<String, Double> fitnessMeasures = model.getFitnessMeasures();
+			fitnessMeasures.put(objFunction.getName(), error);
+			model.setFitnessMeasures(fitnessMeasures);
+			
 			seen.replace(isSeen, error);
 
-
-			synchronized (plateau) {
-				plateau.add(new PlateauModel(structure, model));
 			
-				filterPlateau();
+
+			synchronized (plateauLite) {
+				
+				plateauFilterAndAdd(new PlateauModelLite(structure, initials,params, outputConsts, error));
+				
+//				plateau.add(new PlateauModel(structure, model));
+//			
+//				filterPlateau();
 			}
 
 			if (error < minerror) {
@@ -260,16 +281,18 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			}
 		}
 
-		synchronized (plateau) {
+		synchronized (plateauLite) {
 			if (count % cLength == 0) {
-				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
+				Task.logger.debug("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateauLite.size()
 						+ " models in the plateau");
+				
+				logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateauLite.size()
+				+ " models in the plateau");
 			}
-
-			if (count % cLength == 0) {
-				logger.info("Evaluation calls: " + count + " - " + "minerror=" + minerror + " - " + plateau.size()
-						+ " models in the plateau");
-			}
+			
+			//save state every 100 evaluations
+			//currently just the plateau
+			if(count % 100000 == 0) writePlateau();
 
 			count++;
 		}

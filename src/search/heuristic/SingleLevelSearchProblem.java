@@ -290,6 +290,8 @@ public class SingleLevelSearchProblem extends ModelSearchProblem {
 			plateau.addAll(plateau2);
 			if(!pass) plateau.add(cModel);
 			
+			
+			//WARNING: Not optimal! See plateauFilterAndAdd function!
 			filterPlateau();
 			
 			if(error < minerror){
