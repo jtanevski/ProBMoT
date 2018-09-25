@@ -266,6 +266,9 @@ class ModelSearchProblem extends Problem {
 					//add in the middle or at the end
 					if(error <= maxError*modifier) plateauLite.add(plateauModel);
 				}
+				
+				//Make it so there is no more than 10000 models in the plateau at a time by removing the worst models
+				while(plateauLite.size() > 10000) plateauLite.pollLast();
 			}
 			
 		}
@@ -279,8 +282,14 @@ class ModelSearchProblem extends Problem {
 				for(int i=0; i<p.structure.length; i++)	s[i] = new Int(p.structure[i], p.structure[i], p.structure[i]);
 				
 				ExtendedModel eModel = codec.decode(s);
-				for(String ivName : p.initials.keySet()) eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
-				for(String icName : p.params.keySet()) eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
+				for(String ivName : p.initials.keySet()) {
+					if(eModel.getModel().allVars.containsKey(ivName))
+						eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
+				}
+				for(String icName : p.params.keySet()) {
+					if(eModel.getModel().allConsts.containsKey(icName))
+						eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
+				}
 				
 				eModel.setOutputConstants(p.outputConsts);
 				
@@ -325,19 +334,32 @@ class ModelSearchProblem extends Problem {
 				out = new PrintStream(FileUtils.openOutputStream(new File(outdir + "/Models_temp.out")));
 				
 				if(plateau.isEmpty()) {
-					for(PlateauModelLite p: plateauLite) {
-						Variable[] s = new Variable[p.structure.length];
-						for(int i=0; i<p.structure.length; i++)	s[i] = new Int(p.structure[i], p.structure[i], p.structure[i]);
-						
-						ExtendedModel eModel = codec.decode(s);
-						for(String ivName : p.initials.keySet()) eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
-						for(String icName : p.params.keySet()) eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
-						
-						eModel.setOutputConstants(p.outputConsts);
-						
-						out.println("// Model" + (counter++));
-						out.println(eModel);
-						out.flush();
+					
+					if (plateauLite.size() > 10000) {
+						out.println("Plateau size too large " + plateauLite.size());
+					} else {
+					
+						for(PlateauModelLite p: plateauLite) {
+							Variable[] s = new Variable[p.structure.length];
+							for(int i=0; i<p.structure.length; i++)	s[i] = new Int(p.structure[i], p.structure[i], p.structure[i]);
+							
+							ExtendedModel eModel = codec.decode(s);
+							for(String ivName : p.initials.keySet()) {
+								if(eModel.getModel().allVars.containsKey(ivName))
+									eModel.getModel().allVars.get(ivName).initial = p.initials.get(ivName);
+							}
+							for(String icName : p.params.keySet()) {
+								if(eModel.getModel().allConsts.containsKey(icName))
+									eModel.getModel().allConsts.get(icName).value = p.params.get(icName);
+							}
+							
+							
+							eModel.setOutputConstants(p.outputConsts);
+							
+							out.println("// Model" + (counter++));
+							out.println(eModel);
+							out.flush();
+						}
 					}
 					
 				} else {

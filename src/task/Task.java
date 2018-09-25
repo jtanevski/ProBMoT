@@ -875,6 +875,8 @@ public class Task {
 						(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
 						ts.settings.search, false);
 				
+				randomsearch.setTempOut(outdir);
+				
 				randomsearch.execute();
 				
 				plateau = randomsearch.getPlateau();
@@ -888,7 +890,7 @@ public class Task {
 							(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
 							ts.settings.search, false);
 
-					// For huge problems
+					beamsearch.setTempOut(outdir);
 
 					beamsearch.setbeamWidth(ts.settings.search.particles);
 
@@ -932,6 +934,8 @@ public class Task {
 					algorithm.addOperator("mutation", mutation);
 					algorithm.addOperator("selection", selection);
 
+					problem.setTempOut(outdir);
+					
 					algorithm.execute();
 					plateau = problem.getPlateau();
 				}
@@ -959,7 +963,7 @@ public class Task {
 		}
 
 		// Write output
-
+		//	WARNING: All simulations of models in a lite plateau will be NULL!
 		int counter = 1;
 		for (ExtendedModel model : plateau) {
 			this.sim_out = new PrintStream(
@@ -967,11 +971,11 @@ public class Task {
 			for (int i = 0; i < datasets.size(); i++) {
 				out.println("// Model" + counter + " for dataset " + datasets.get(i).getFilepath());
 				out.println(model);
-				this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+				//this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
 				try {
 					this.sim_out.println(model.getSimulations().get(i));
-				} catch (NullPointerException e) {
-					this.sim_out.println("FAILED SIMULATION");
+				} catch (Exception e) {
+					this.sim_out.println("SIMULATION NOT AVAILABLE");
 				}
 			}
 			counter++;
@@ -1036,7 +1040,7 @@ public class Task {
 					}
 					if (fit) {
 	
-						this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
+						//this.sim_out.println("DATASET_ID:" + datasets.get(i).getId());
 						try {
 							this.sim_out.println(eModel.getSimulations().get(i));
 						} catch (NullPointerException e) {

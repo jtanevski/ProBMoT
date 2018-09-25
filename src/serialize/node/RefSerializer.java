@@ -23,7 +23,7 @@ public class RefSerializer<T extends Ref> extends NodeSerializer<T> {
 	@Override
 	public String serialize(T node, String... children) {
 		if (node instanceof AEVarRef && ((AEVarRef)node).getIV().id.equals("t")) {		//FIXME: :)
-			return "t";
+			return "time";
 		} else {
 			String nodeName = node.toString();
 			String newName = StringUtils.defaultString(prepend) + nodeName.replace(".", dotString);

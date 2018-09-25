@@ -292,7 +292,7 @@ public class TwoLevelSearchProblem extends ModelSearchProblem {
 			
 			//save state every 100 evaluations
 			//currently just the plateau
-			if(count % 100000 == 0) writePlateau();
+			if(count % 10000 == 0) writePlateau();
 
 			count++;
 		}

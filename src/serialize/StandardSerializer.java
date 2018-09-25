@@ -64,7 +64,7 @@ public abstract class StandardSerializer extends BaseSerializer {
 
 	public String serialize(IV iv, boolean isDeriv) {
 		if (iv.id.equals("t")) {
-			return "t";								// FIXME: :)
+			return "time";								// FIXME: :)
 		} else {
 			return this.serializers.get(AEVarRef.class).serialize(new AEVarRef(iv)) + (isDeriv ? (dotString + "dot") : "");
 		}

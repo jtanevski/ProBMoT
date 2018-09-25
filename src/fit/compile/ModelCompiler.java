@@ -62,10 +62,14 @@ public class ModelCompiler {
 		}
 		yprimeSrc.append("\n");
 
+		yprimeSrc.append("double time=dimensions[0];");
 		yprimeSrc.append("\t\t// Exogenous\n");
 		i = 0;
 		for (IVNode ivNode : graph.reachExogenous.valueList()) {
 			String ivNameJava = serializer.serialize(ivNode.var);
+			
+			//quickfix
+			if(!ivNameJava.equals("time"))
 			yprimeSrc.append("\t\tdouble " + ivNameJava + " = exogenous[" + i + "];\n");
 
 			i++;
@@ -234,7 +238,7 @@ public class ModelCompiler {
 
 		outputSrc.append("\tpublic void output(double[] dimensions, double[] modelParameters, double[] exogenous, double[] state, double[] outputParameters, double[] output) {\n");
 
-
+		
 		outputSrc.append("\t\t// Model Parameters\n");
 		for (int i = 0; i < graph.reachParameters.size(); i++) {
 			IC cons = graph.reachParameters.get(i).cons;
@@ -243,10 +247,15 @@ public class ModelCompiler {
 		}
 		outputSrc.append("\n");
 
+		
+		outputSrc.append("double time=dimensions[0];");
+		
 		outputSrc.append("\t\t// Exogenous\n");
 		for (int i = 0; i < graph.reachExogenous.size(); i++) {
 			IV exo = graph.reachExogenous.get(i).var;
 			String exoName = serializer.serialize(exo);
+			
+			if(!exoName.equals("time"))
 			outputSrc.append("\t\tdouble " + exoName + " = exogenous[" + i + "];\n");
 		}
 		outputSrc.append("\n");

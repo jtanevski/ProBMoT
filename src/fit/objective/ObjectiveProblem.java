@@ -405,11 +405,11 @@ public class ObjectiveProblem extends Problem {
 //		if (count % 1000 == 0) {
 //			Task.logger.debug("Evaluation: " + count);
 //		}
-//		
-//		//write hypercube points and minimal error
-//		if (count % populationSize == 0 ){
-//			logger.info(Double.toString(minerror));
-//		}
+		
+		//write hypercube points and minimal error
+		if (count % populationSize == 0 ){
+			logger.info(Double.toString(minerror));
+		}
 
 		count++;
 		

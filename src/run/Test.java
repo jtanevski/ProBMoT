@@ -47,8 +47,10 @@ public class Test {
 	 * @throws NoSuchFieldException 
 	 * @throws IllegalAccessException 
 	 * @throws InstantiationException 
+	 * @throws InterruptedException 
+	 * @throws ConfigurationException 
 	 */
-	public static void main(String[] args) throws InstantiationException, IllegalAccessException, NoSuchFieldException, InvocationTargetException, NoSuchMethodException, IOException, RecognitionException {
+	public static void main(String[] args) throws InstantiationException, IllegalAccessException, NoSuchFieldException, InvocationTargetException, NoSuchMethodException, IOException, RecognitionException, ConfigurationException, InterruptedException {
 //		System.setProperty("java.library.path", CVodeSimulator.JVODE_LIB_PATH);
 //	
 //
@@ -65,10 +67,34 @@ public class Test {
 //		
 		//System.out.println(data.get());
 		
-		Library library = Traverse.addLibrary("WholeAquaticEcosystem_notTested.pbl");
-		Model model = Traverse.addIncompleteModel("BledIncomplete.pbm");
+		Library library = Traverse.addLibrary("ssystem/SSystem.pbl");
+		Model model = Traverse.addIncompleteModel("ssystem/IncompleteSSBranch2.pbm");
 		
-//		ModelEnumerator search = new ModelEnumerator(new ExtendedModel(model.copy()));
+		
+		
+		ModelEnumerator search = new ModelEnumerator(new ExtendedModel(model.copy()));
+		
+		int pmin, pavg, pmax;
+		pmin = Integer.MAX_VALUE; pavg = 0; pmax = 0;
+		
+		int count = 0;
+		
+		//Find reach parameters by loading the task and the proper output
+		
+		while(search.hasNextModel()) {
+			ExtendedModel currModel = search.nextModel();
+			IQGraph graph = new IQGraph(currModel.getModel());
+			graph.sort(Type.DIFFERENTIAL);
+			int cp = graph.unknownParameters.size();			
+			if(cp < pmin) pmin=cp;
+			if(cp > pmax) pmax=cp;
+			pavg += cp;
+			count++;
+		}
+		pavg /= count;
+		
+		System.out.println(pmin +  " " + pavg + " " + pmax + " " + count);
+		//System.out.println(search.count());
 //		try {
 //			while(search.hasNextModel()) {
 //				System.out.println(search.getCounter());
@@ -79,7 +105,10 @@ public class Test {
 //			e.printStackTrace();
 //		}
 //		
-		//GeneticCodec ec = new GeneticCodec();
+//		GeneticCodec ec = new GeneticCodec();
+//		//ec.enumerate = false;
+//		ec.encode(new ExtendedModel(model), null);
+		
 		//ec.enumerate = false;
 		//System.out.println(ec.encode(new ExtendedModel(model), null));
 		

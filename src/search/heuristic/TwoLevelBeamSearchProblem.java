@@ -4,10 +4,12 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -51,7 +53,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	private int cLength;
 	private int beamWidth;
 	
-	private TreeSet<VariableArray> seen;
+	private Set<VariableArray> seen;
 	
 	
 	//TODO: Might be buggy. Is the pruning sufficient?
@@ -79,7 +81,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		//default beam width
 		beamWidth = cLength;
 
-		seen = new TreeSet<VariableArray>();
+		seen = new HashSet<VariableArray>();
 		
 	}
 	
@@ -110,7 +112,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		boolean useConvergence = false;
 		
 		int noImprovement = 0;
-		int convergenceStop = 10;
+		int convergenceStop = 1;
 		ExecutorService executor;
 		
 		while(true) {
@@ -173,8 +175,11 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 	
 			int c=0;
 			for(Variable[] candidate : beam.keySet()){
-				nextStep.add(candidate);
-				if((++c)>=beamWidth) break;
+				//if filter for for true greedy only
+				if(beam.get(candidate) <= best.error) {
+					nextStep.add(candidate);
+					if((++c)>=beamWidth) break;
+				}
 			}
 			
 			
@@ -349,6 +354,7 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 
 		} catch (Exception e) {
 			logger.warning("Something went wrong. A model evaluation failed.");
+			System.out.println(e.getMessage());
 			failed = true;
 		}
 		
