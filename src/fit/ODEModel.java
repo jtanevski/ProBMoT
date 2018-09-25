@@ -89,7 +89,6 @@ public class ODEModel extends CvodeLibrary.CVRhsFn {
 		}
 
 		this.problemSize = graph.diffDifferential.size() + graph.algAlgebraic.size();
-		//this.problemSize = (graph.diffDifferential.size() != 0) ? graph.diffDifferential.size() : graph.algAlgebraic.size();
 		this.ode = ModelCompiler.iqGraphToODEFunction(graph);
 
 		// Dimension ordering & initial values
