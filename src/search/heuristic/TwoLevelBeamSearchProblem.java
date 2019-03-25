@@ -109,9 +109,13 @@ public class TwoLevelBeamSearchProblem extends ModelSearchProblem{
 		LinkedList<Variable[]> nextStep = states;
 		PlateauModelLite best = null;
 		
+		
+		//To switch from Tabu to classic beam search change this flag to true
 		boolean useConvergence = false;
 		
 		int noImprovement = 0;
+		
+		//Optional parameter for running a hybrid beam/tabu search
 		int convergenceStop = 1;
 		ExecutorService executor;
 		

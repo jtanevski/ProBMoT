@@ -1,0 +1,94 @@
+incomplete model BledIncomplete : WholeAquaticEcosystem;
+
+entity ortp : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation {fit_range: <0,5>};
+}
+
+entity no : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation {fit_range: <0,5>};
+}
+
+entity silica : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation {fit_range: <0,5>};
+}
+
+entity phyto : PrimaryProducer {
+	vars:
+		conc {role:endogenous},
+		nutrientLim{role:endogenous},
+		lightLim{role:endogenous},
+		growthRate{role:endogenous},
+		tempGrowthLim{role:endogenous},
+		tempRespLim{role:endogenous},
+		tempMortLim{role:endogenous},
+		tempExcLim{role:endogenous},
+		tempSedLim{role:endogenous};
+	consts:
+		maxGrowthRate {fit_range:<0.05,3>};
+//		maxLossRate = null; //never used
+}
+
+entity daph : Zooplankton {
+	vars:
+		conc{role:endogenous},
+		phytoLim{role:endogenous},
+		phytoSum{role:endogenous},
+		tempGrowthLim{role:endogenous},
+		tempRespLim{role:endogenous},
+		tempMortLim{role:endogenous},
+		tempExcLim{role:endogenous},
+		tempSedLim{role:endogenous};
+	consts:
+//		maxIngestionRate {fit_range: <0.01, 5>}, 
+		maxFiltrationRate {fit_range:<0.01, 5>},
+//		maxLossRate, //never used
+		assimilationCoeff;
+}
+
+entity env : Environment {
+	vars:
+		temperature,
+		light,
+		flow;
+	consts:
+		volume = 0,
+		depth = 10,
+		area = 0;
+}
+
+process nutrientPPInteraction(phyto, [ortp, silica, no], env) : NutrientPrimaryProducerInteraction {
+	processes:
+		LightInfluence, NutrientInfluence, NutrientInfluence, NutrientInfluence, growth, RespirationPP;
+}
+
+process growth(phyto, [ortp, silica, no], env) : Growth {
+	processes:
+		TempGrowthInfluence, GrowthRate;
+}
+
+
+process feedsOn(daph, [phyto], env) : FeedsOn {
+	processes:
+		TempGrowthInfluence, PhytoLim;
+}
+
+process sedimenatation(phyto, env) : Sedimentation {
+	consts:
+		sedimentationRate {fit_range:<0.1, 0.9>};
+	processes:
+		TempSedInfluence;
+}
+
+

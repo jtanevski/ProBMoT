@@ -1,0 +1,46 @@
+library SyntheticNetworkLocalExt;
+
+template entity protein{
+	vars:
+		mol {range:<0,200>},
+		mRNAmol {range:<0,200>};
+	consts:
+		alpha0 {range: <0,10>},
+		beta {range: <0,10>},
+		delta {range: <0,10>};
+}
+
+template process interaction(p1: protein, p2: protein){
+	consts:
+		alpha {range: <1,500>},
+		n {range: <1,10>};
+}
+
+template process none : interaction {}
+template process inhibition : interaction{
+	equations:
+		  //-> p2.mRNAmol ![alpha/(1 + pow(p1.mol,n))];
+		  td(p2.mRNAmol) = alpha/(1 + pow(p1.mol,n));
+}
+template process activation : interaction{
+	equations:
+		  //-> p2.mRNAmol ![alpha * pow(p1.mol,n)/(1 + pow(p1.mol,n))];
+		  td(p2.mRNAmol) = alpha * pow(p1.mol,n)/(1 + pow(p1.mol,n));
+}
+
+template process transc_transl(p:protein){
+	equations:
+	     //-> p.mRNAmol [p.alpha0],
+	      //p.mRNAmol -> p.mol + p.mRNAmol [p.beta];
+	      td(p.mRNAmol) = p.alpha0,
+	      td(p.mol) = p.mRNAmol*p.beta;
+}
+
+template process degradation(p:protein){
+	equations:
+		//p.mol -> [p.beta],
+		//p.mRNAmol -> [p.delta];
+		td(p.mol) = -p.beta*p.mol,
+		td(p.mRNAmol) = - p.delta*p.mRNAmol;
+
+}

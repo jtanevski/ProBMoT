@@ -1,0 +1,35 @@
+ProBMoT is open source software released under the terms of the following three clause BSD license:
+
+Copyright (c) 2013,2015 Jožef Stefan Institute 
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+_________________
+
+
+Third party software
+ProBMoT contains distributions of the following third party software:
+
+-ANTLR v3.2 (http://www.antlr.org/) - Licenced according to the BSD Licence (http://www.antlr.org/license.html)
+-Apache Commons Components: Collections v2.3.1 (https://commons.apache.org/proper/commons-collections/) , Apache Commons Configuration v1.6 (https://commons.apache.org/proper/commons-configuration/), Apache Commons IO v2.0 (https://commons.apache.org/proper/commons-io/),Apache Commons Lang v2.5,v3 (https://commons.apache.org/proper/commons-lang/), Apache Commons Launcher(https://commons.apache.org/proper/commons-launcher/), Apache Commons Logging v1.1.1 (https://commons.apache.org/proper/commons-logging/), Apache Commons Math v3.2 (https://commons.apache.org/proper/commons-math/)    - Licenced according to the Apache Licence (http://www.apache.org/licenses/)
+-BridJ v0.6.2 (https://github.com/nativelibs4java/BridJ) - Licenced according to the BSD Licence (https://code.google.com/p/bridj/wiki/CreditsAndLicense)
+-COLT v1.0.3 (https://dst.lbl.gov/ACSSoftware/colt/) - Licenced according to https://dst.lbl.gov/ACSSoftware/colt/license.html
+-EclipseLink v2.3 (http://www.eclipse.org/eclipselink/) - Licenced according to the Eclipse Public License v1.0 http://www.gnu.org/licenses/lgpl-2.1.html and Eclipse Distribution License v1.0 http://www.eclipse.org/org/documents/edl-v10.php
+-Google Guava v9 (https://github.com/google/guava) - Licenced according to the Apache Licence (http://www.apache.org/licenses/)
+-ISBJava v2.4.4 (http://magnet.systemsbiology.net/software/ISBJava/) - Licenced according to Lesser General Public Licence v2.1 http://magnet.systemsbiology.net/software/License.html
+-JAMA v1.0.3 (http://math.nist.gov/javanumerics/jama/) - Public domain
+-jMetal v4.4 (http://jmetal.sourceforge.net/) - Licenced according to the Lesser General Public Licence v2.1 http://www.gnu.org/licenses/lgpl-2.1.html
+-JSAP v2.1 (http://www.martiansoftware.com/jsap/) - Licenced according to the Lesser General Public Licence v2 (http://www.gnu.org/licenses/old-licenses/lgpl-2.0.html)
+Logback v1 (http://logback.qos.ch/) - Licenced according to the Eclipse Public Licence v1.0 and the Lesser General Public Licence v2.1 (http://logback.qos.ch/license.html)
+-Ostermiller Utils v1.07 (https://ostermiller.org/utils/) - Licenced according to the General Public Licence v2 (https://ostermiller.org/utils/license.html)
+-SLF4J v1.6.4 (http://www.slf4j.org/) - Licenced according to the MIT Licence (http://www.slf4j.org/license.html)
+-SUNDIALS CVODE v2.5 (https://computation.llnl.gov/casc/sundials/description/description.html) - Licenced according to the BSD Licence http://computation.llnl.gov/casc/sundials/download/license.html

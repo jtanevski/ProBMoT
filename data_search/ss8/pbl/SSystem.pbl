@@ -1,0 +1,41 @@
+library SSystem;
+
+template entity Metabolite {
+	vars:
+		conc {aggregation:sum; range:<0,20>},
+		production{aggregation:product},
+		degradation {aggregation:product};
+	consts:
+		alpha { range: <0.1, 20>},
+		beta { range: <0.1, 20>};
+}
+
+
+template process composition(m:Metabolite){
+	equations:
+		m.production = 1, m.degradation = 1,
+		td(m.conc) = m.alpha*m.production - m.beta*m.degradation;
+}
+
+template process regulation(ms: Metabolite, md: Metabolite){
+	consts:
+		order { range: <-1, 1>};
+}
+
+template process none : regulation { 
+	equations:
+		md.production = 1,
+		md.degradation = 1;
+}
+
+template process pregulation : regulation {
+	equations:
+		md.production = pow(ms.conc,order),
+		md.degradation= 1;
+}
+
+template process dregulation : regulation {
+	equations:
+		md.production = 1,
+		md.degradation = pow(ms.conc,order);
+}

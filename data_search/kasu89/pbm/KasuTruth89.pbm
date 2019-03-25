@@ -1,0 +1,130 @@
+// Model #16977
+model KasuTruth : KasuAquaticEcosystem;
+
+//Entities
+
+entity phosphorus : Nutrient {
+	vars:
+		conc { role: exogenous;};
+	consts:
+		alpha = 0,
+		halfSaturation = 0.5092215510879727;
+}
+
+entity nitrogen : Nutrient {
+	vars:
+		conc { role: exogenous;};
+	consts:
+		alpha = 0,
+		halfSaturation = 7.9748910757769895;
+}
+
+entity silica : Nutrient {
+	vars:
+		conc { role: exogenous;};
+	consts:
+		alpha = 0,
+		halfSaturation = 0.0;
+}
+
+entity phyto : PrimaryProducer {
+	vars:
+		conc { role: endogenous; initial: 0.20736889586891127;},
+		nutrientLim { role: endogenous; initial: 0;},
+		lightLim { role: endogenous; initial: 0;},
+		growthRate { role: endogenous; initial: 0;},
+		tempGrowthLim { role: endogenous; initial: 0;},
+		tempRespLim { role: endogenous; initial: 0;},
+		tempMortLim { role: endogenous; initial: 0;},
+		tempExcLim { role: endogenous; initial: 0;},
+		tempSedLim { role: endogenous; initial: 0;};
+	consts:
+		maxGrowthRate = 0.005;
+}
+
+entity env : Environment {
+	vars:
+		temperature { role: exogenous;},
+		light { role: exogenous;},
+		flow { role: exogenous;};
+	consts:
+		volume = 0.0,
+		depth = 5.0,
+		area = 0.0;
+}
+
+//Processes
+
+process nutrientPPInteraction(phyto, [phosphorus, silica, nitrogen], env) : NutrientPrimaryProducerInteraction {
+	processes:
+		lightInfluence339, nutrientInfluence179, nutrientInfluence492, nutrientInfluence493, growth, respirationPP886;
+}
+
+process growth(phyto, [phosphorus, silica, nitrogen], env) : Growth {
+	processes:
+		tempGrowthInfluence362, growthRate540;
+}
+
+process mortality(phyto, env) : Temp2MortalityPP {
+	consts:
+		mortRate = 0.01841733574921909;
+}
+
+process sedimenatation(phyto, env) : Sedimentation {
+	consts:
+		sedimentationRate = 0.10916148582641463;
+	processes:
+		tempSedInfluence338;
+}
+
+process lightInfluence339(phyto, env) : MonodLightLim {
+	consts:
+		halfSat = 0.0;
+}
+
+process nutrientInfluence179(phyto, phosphorus) : Monod2NutrientLim {
+}
+
+process nutrientInfluence492(phyto, silica) : MonodNutrientLim {
+}
+
+process nutrientInfluence493(phyto, nitrogen) : Monod2NutrientLim {
+}
+
+process tempGrowthInfluence362(phyto, env) : ExponentialTempGrowthLim {
+	consts:
+		refTemp = 1.0,
+		minTemp = 0,
+		optTemp = 0,
+		theta = 1.1082359369315298;
+}
+
+process growthRate540(phyto, [phosphorus, silica, nitrogen], env) : LimitedGrowthRate {
+}
+
+process respirationPP886(phyto, [phosphorus, silica, nitrogen], env) : Temp2RespirationPP {
+	consts:
+		respRate = 0.007383985963049457;
+	processes:
+		tempRespInfluence480;
+}
+
+process tempSedInfluence338(phyto, env) : Linear2TempSedLim {
+	consts:
+		refTemp = 1.7364538506758493,
+		minTemp = 6.0,
+		optTemp = 0;
+}
+
+process tempRespInfluence480(phyto, env) : ExponentialTempRespLim {
+	consts:
+		refTemp = 22.0,
+		minTemp = 0,
+		optTemp = 0,
+		theta = 1.13;
+}
+//Compartments
+
+//Train Error :RMSEMultiDataset = 0.4272260067179669
+//Validtion Error  :RMSEMultiDataset = 2.314275535539324
+//Test Error  :RMSEMultiDataset = 1.4542413071403357

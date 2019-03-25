@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<task xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="schemas/schema1.xsd">
+	<library>pbl/SyntheticNetworkLocalExt.pbl</library>
+	<incomplete>pbm/SyntheticNetworkLocalExt.pbm</incomplete>
+
+	<data>
+		<d separator=" ">data/repressive.data</d>
+	</data>
+
+	<mappings>
+		<dimensions>
+			<dim name="time" col="time" />
+		</dimensions>
+		
+		<outputs>
+			<out name="MX" col="MX" />
+			<out name="MY" col="MY" />
+			<out name="MZ" col="MZ" />
+			<out name="PX" col="PX" />
+			<out name="PY" col="PY" />
+			<out name="PZ" col="PZ" />
+		</outputs>
+		
+	</mappings>
+	
+	<output>
+		<constants>
+		</constants>
+		<variables>
+			<var name="MX">SyntheticNetworkLocalExt.p1.mRNAmol</var>
+			<var name="MY">SyntheticNetworkLocalExt.p2.mRNAmol</var>
+			<var name="MZ">SyntheticNetworkLocalExt.p3.mRNAmol</var>
+			<var name="PX">SyntheticNetworkLocalExt.p1.mol</var>
+			<var name="PY">SyntheticNetworkLocalExt.p2.mol</var>
+			<var name="PZ">SyntheticNetworkLocalExt.p3.mol</var>
+		</variables>
+	</output>
+	
+	<command>heuristic_search</command>
+	
+	<settings>
+
+		<search>
+			<level>2</level>
+			<regularization>none</regularization>
+			<lambda>1</lambda>
+			<threads>12</threads>
+			<particles>12</particles>
+			<maxevaluations>729</maxevaluations>
+			<plateau>0.1</plateau>
+		</search>
+
+		<fitter method="DE">
+			<evaluations>1000</evaluations>
+			<population>100</population>
+			<strategy>rand/1/bin</strategy>
+			<F>0.8</F>
+			<Cr>0.9</Cr>
+			<objectives>
+				<obj>RMSEMultiDataset</obj>
+			</objectives>
+			 <seed>5</seed>
+ 		</fitter>
+		
+  		<simulator method="CVODE">
+        	<abstol>1.0E-6</abstol>
+        	<reltol>1.0E-3</reltol>
+         	<steps>1000</steps>
+        </simulator>
+
+	</settings>
+	
+	<writeDir>out/repressive_ga_100/</writeDir>
+</task>

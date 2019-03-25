@@ -1,0 +1,74 @@
+incomplete model SyntheticNetworkLocalExt : SyntheticNetworkLocalExt;
+
+entity p1 : protein {
+	vars:
+		mol { role: endogenous; initial: 5;},
+		mRNAmol { role: endogenous; initial: 0;};
+	consts:
+		alpha0, beta, delta=1;
+}
+
+entity p2 : protein {
+	vars:
+		mol { role: endogenous; initial: 0;},
+		mRNAmol { role: endogenous; initial: 0;};
+	consts:
+		alpha0, beta, delta=1;
+}
+
+entity p3 : protein {
+	vars:
+		mol { role: endogenous; initial: 15;},
+		mRNAmol { role: endogenous; initial: 0;};
+	consts:
+		alpha0, beta, delta=1;
+}
+
+
+process m1process1(p1,p1) : interaction{
+	consts:
+		alpha, n;
+}
+process m1process2(p2,p1) : interaction{
+	consts:
+		alpha, n;
+}
+process m1process3(p3,p1) : interaction{
+	consts:
+		alpha, n;
+}
+
+process m2process1(p1,p2) : interaction{
+	consts:
+		alpha, n;
+}
+process m2process2(p2,p2) : interaction{
+	consts:
+		alpha, n;
+}
+process m2process3(p3,p2) : interaction{
+	consts:
+		alpha, n;
+}
+
+process m3process1(p1,p3) : interaction{
+	consts:
+		alpha, n;
+}
+process m3process2(p2,p3) : interaction{
+	consts:
+		alpha, n;
+}
+process m3process3(p3,p3) : interaction{
+	consts:
+		alpha, n;
+}
+
+
+process p1translation(p1) : transc_transl {}
+process p2translation(p2) : transc_transl {}
+process p3translation(p3) : transc_transl {}
+
+process p1degradation(p1) : degradation {}
+process p2degradation(p2) : degradation {}
+process p3degradation(p3) : degradation {}

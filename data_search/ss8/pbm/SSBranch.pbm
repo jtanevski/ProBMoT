@@ -1,0 +1,93 @@
+model SSBranch: SSystem;
+
+entity X0 : Metabolite {
+	vars:
+		conc {role: exogenous;},
+		production {role: endogenous; initial: 0;},
+		degradation {role: endogenous; initial: 0;};
+	consts:
+		alpha=0, beta=0;
+}
+
+entity X1 : Metabolite {
+	vars:
+		conc {role: endogenous; initial: 1.4;},
+		production {role: endogenous; initial: 1;},
+		degradation {role: endogenous; initial: 1;};
+	consts:
+		alpha=20, beta=10;
+}
+
+entity X2 : Metabolite {
+	vars:
+		conc {role: endogenous; initial: 2.7;},
+		production {role: endogenous; initial: 1},
+		degradation {role: endogenous; initial: 1};
+	consts:
+		alpha=8, beta=3;
+}
+
+entity X3 : Metabolite {
+	vars:
+		conc {role: endogenous; initial: 1.2;},
+		production {role: endogenous; initial: 1;},
+		degradation {role: endogenous; initial: 1;};
+	consts:
+		alpha=3, beta=5;
+}
+
+entity X4 : Metabolite {
+	vars:
+		conc {role: endogenous; initial:0.4;},
+		production {role: endogenous; initial: 1;},
+		degradation {role: endogenous; initial: 1;};
+	consts:
+		alpha=2, beta=6;
+}
+
+
+process p01(X0,X1): pregulation{
+	consts: order=1;
+}
+
+process p31(X3,X1): pregulation{
+	consts: order=-0.8;
+}
+
+process p12(X1,X2): pregulation{
+	consts: order=0.5;
+}
+
+process p23(X2,X3): pregulation{
+	consts: order=0.75;
+}
+
+process p43(X4,X3): dregulation{
+	consts: order=0.2;
+}
+
+process p14(X1,X4): pregulation{
+	consts: order=0.5;
+}
+
+process p11(X1,X1): dregulation{
+	consts: order=0.5;
+}
+
+process p22(X2,X2): dregulation{
+	consts: order=0.75;
+}
+
+process p33(X3,X3): dregulation{
+	consts: order=0.5;
+}
+
+process p44(X4,X4): dregulation{
+	consts: order=0.8;
+}
+
+
+process c1(X1) : composition {}
+process c2(X2) : composition {}
+process c3(X3) : composition {}
+process c4(X4) : composition {}

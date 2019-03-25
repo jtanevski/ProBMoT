@@ -1,0 +1,71 @@
+incomplete model KasuIncomplete : KasuAquaticEcosystem;
+
+entity phosphorus : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation = null;
+}
+
+entity nitrogen : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation = null;
+}
+
+entity silica : Nutrient {
+	vars:
+		conc;
+	consts:
+		alpha = null,
+		halfSaturation = null;
+}
+
+entity phyto : PrimaryProducer {
+	vars:
+		conc {role:endogenous ; initial: null},
+		nutrientLim{role:endogenous},
+		lightLim{role:endogenous},
+		growthRate{role:endogenous},
+		tempGrowthLim{role:endogenous},
+		tempRespLim{role:endogenous},
+		tempMortLim{role:endogenous},
+		tempExcLim{role:endogenous},
+		tempSedLim{role:endogenous};
+	consts:
+		maxGrowthRate = null;
+//		maxLossRate = null;
+}
+
+entity env : Environment {
+	vars:
+		temperature,
+		light,
+		flow;
+	consts:
+		volume = 0,
+		depth = 5,
+		area = 0;
+}
+
+process nutrientPPInteraction(phyto, [phosphorus, silica, nitrogen], env) : NutrientPrimaryProducerInteraction {
+	processes:
+		LightInfluence, NutrientInfluence, NutrientInfluence, NutrientInfluence, growth, RespirationPP;
+}
+
+process growth(phyto, [phosphorus, silica, nitrogen], env) : Growth {
+	processes:
+		TempGrowthInfluence, GrowthRate;
+}
+
+process mortality(phyto, env) : MortalityPP {}
+
+process sedimenatation(phyto, env) : Sedimentation {
+	consts:
+		sedimentationRate = null;
+	processes:
+		TempSedInfluence;
+}
