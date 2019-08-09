@@ -42,6 +42,7 @@ import temp.IQGraph;
 import temp.Output;
 import util.FailedSimulationException;
 import xml.CVODESpec;
+import xml.DESpec;
 import xml.FitterSpec;
 import xml.InitialValuesSpec;
 import xml.OutputSpec;
@@ -331,7 +332,7 @@ class ModelSearchProblem extends Problem {
 			int counter = 1;
 			PrintStream out = null;
 			try {
-				out = new PrintStream(FileUtils.openOutputStream(new File(outdir + "/Models_temp.out")));
+				out = new PrintStream(FileUtils.openOutputStream(new File(outdir + "/Models_temp"+ ((DESpec)fitterSpec).seed + ".out")));
 				
 				if(plateau.isEmpty()) {
 					

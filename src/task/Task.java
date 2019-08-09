@@ -15,6 +15,7 @@ import jmetal.core.*;
 import jmetal.metaheuristics.singleObjective.cmaes.CMAES;
 import jmetal.metaheuristics.singleObjective.differentialEvolution.*;
 import jmetal.metaheuristics.singleObjective.geneticAlgorithm.pgGA;
+import jmetal.metaheuristics.singleObjective.particleSwarmOptimization.PSO;
 import jmetal.operators.crossover.*;
 import jmetal.operators.mutation.MutationFactory;
 import jmetal.operators.selection.*;
@@ -31,6 +32,7 @@ import org.xml.sax.*;
 
 import search.*;
 import search.heuristic.TwoLevelBeamSearchProblem;
+import search.heuristic.TwoLevelPSOSearchProblem;
 import search.heuristic.TwoLevelSearchProblem;
 import search.heuristic.RandomSearchProblem;
 import search.heuristic.SingleLevelSearchProblem;
@@ -859,6 +861,7 @@ public class Task {
 		boolean level2 = true;
 		boolean beam = false;
 		boolean random = false;
+		boolean pso = false;
 		
 		if (ts.settings.search.level.contains("1"))
 			level2 = false;
@@ -866,6 +869,8 @@ public class Task {
 			beam = true;
 		if (ts.settings.search.level.contains("r"))
 			random = true;
+		if (ts.settings.search.level.contains("p"))
+			pso = true;
 
 		if (level2) {
 			if (random) {
@@ -899,48 +904,78 @@ public class Task {
 					plateau = beamsearch.getPlateau();
 
 				} else {
+					if(pso) {
+						TwoLevelPSOSearchProblem problem = new TwoLevelPSOSearchProblem(ext, ts.output, datasets, dimsToCols,
+								endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
+								ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
+						
+						algorithm = new PSO(problem);
+						
+						algorithm.setInputParameter("swarmSize", ts.settings.search.particles);
+						int maxiter = (int)Math.round((double)ts.settings.search.maxevaluations/ts.settings.search.particles);
+						algorithm.setInputParameter("maxIterations", maxiter);
+						
+						//Doesn't really do much but has to be here
+						HashMap<String, Object> parameters = new HashMap<String, Object>();
+					    parameters.put("probability", 1.0/problem.getNumberOfVariables()) ;
+					    parameters.put("distributionIndex", 20.0) ;
+					                        
 
-					TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
-							endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-							ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
-
-					int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
-					IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
-
-					algorithm = new pgGA(problem, evaluator);
-
-					HashMap<String, Object> parameters;
-					Operator crossover;
-					Operator mutation;
-					Operator selection;
-
-					algorithm.setInputParameter("populationSize", ts.settings.search.particles);
-					algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
-
-					problem.setPopulationSize(ts.settings.search.particles);
-
-					parameters = new HashMap<String, Object>();
-					parameters.put("probability", 0.9);
-					crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);
-
-					parameters = new HashMap<String, Object>();
-					parameters.put("probability", 1.0 / problem.getNumberOfVariables());
-					mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
-
-					parameters = null;
-					selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
-
-					algorithm.addOperator("crossover", crossover);
-					algorithm.addOperator("mutation", mutation);
-					algorithm.addOperator("selection", selection);
-
-					problem.setTempOut(outdir);
-					
-					algorithm.execute();
-					plateau = problem.getPlateau();
+					    algorithm.addOperator("mutation", MutationFactory.getMutationOperator("PolynomialMutation", parameters));
+					    
+					    //Back to normal
+					    
+					    problem.setTempOut(outdir);
+						
+						algorithm.execute();
+						plateau = problem.getPlateau();
+						
+					} else {
+						//Genetic algorithm
+						TwoLevelSearchProblem problem = new TwoLevelSearchProblem(ext, ts.output, datasets, dimsToCols,
+								endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
+								ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
+	
+						int threads = Math.max(2, ts.settings.search.threads); // 0 - use all the available cores
+						IParallelEvaluator evaluator = new MultithreadedEvaluator(threads);
+	
+						algorithm = new pgGA(problem, evaluator);
+	
+						HashMap<String, Object> parameters;
+						Operator crossover;
+						Operator mutation;
+						Operator selection;
+	
+						algorithm.setInputParameter("populationSize", ts.settings.search.particles);
+						algorithm.setInputParameter("maxEvaluations", ts.settings.search.maxevaluations);
+	
+						problem.setPopulationSize(ts.settings.search.particles);
+	
+						parameters = new HashMap<String, Object>();
+						parameters.put("probability", 0.9);
+						crossover = CrossoverFactory.getCrossoverOperator("SinglePointCrossover", parameters);
+	
+						parameters = new HashMap<String, Object>();
+						parameters.put("probability", 1.0 / problem.getNumberOfVariables());
+						mutation = MutationFactory.getMutationOperator("BitFlipMutation", parameters);
+	
+						parameters = null;
+						selection = SelectionFactory.getSelectionOperator("BinaryTournament", parameters);
+	
+						algorithm.addOperator("crossover", crossover);
+						algorithm.addOperator("mutation", mutation);
+						algorithm.addOperator("selection", selection);
+	
+						problem.setTempOut(outdir);
+						
+						algorithm.execute();
+						plateau = problem.getPlateau();
+					}
 				}
 			}
 		} else {
+			//GA mode
+			
 			SingleLevelSearchProblem problem = new SingleLevelSearchProblem(ext, ts.output, objectiveFun, datasets,
 					dimsToCols, exosToCols, outsToCols, (CVODESpec) ts.settings.simulator, ts.settings.initialvalues,
 					ts.settings.search, true);
