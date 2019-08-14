@@ -34,6 +34,7 @@ import search.*;
 import search.heuristic.TwoLevelBeamSearchProblem;
 import search.heuristic.TwoLevelPSOSearchProblem;
 import search.heuristic.TwoLevelSearchProblem;
+import search.heuristic.TwoLevelpPSOSearchProblem;
 import search.heuristic.RandomSearchProblem;
 import search.heuristic.SingleLevelSearchProblem;
 import serialize.*;
@@ -905,30 +906,23 @@ public class Task {
 
 				} else {
 					if(pso) {
-						TwoLevelPSOSearchProblem problem = new TwoLevelPSOSearchProblem(ext, ts.output, datasets, dimsToCols,
-								endosToCols, exosToCols, outsToCols, weightsToCols, (CVODESpec) ts.settings.simulator,
-								ts.settings.fitter, ts.settings.initialvalues, ts.settings.search, false);
 						
-						algorithm = new PSO(problem);
+						TwoLevelpPSOSearchProblem psosearch  = new TwoLevelpPSOSearchProblem(ext, ts.output, datasets,
+							dimsToCols, endosToCols, exosToCols, outsToCols, weightsToCols,
+							(CVODESpec) ts.settings.simulator, ts.settings.fitter, ts.settings.initialvalues,
+							ts.settings.search, false);
 						
-						algorithm.setInputParameter("swarmSize", ts.settings.search.particles);
+						psosearch.setTempOut(outdir);
 						int maxiter = (int)Math.round((double)ts.settings.search.maxevaluations/ts.settings.search.particles);
-						algorithm.setInputParameter("maxIterations", maxiter);
+						psosearch.setMaxIterations(maxiter);
 						
-						//Doesn't really do much but has to be here
-						HashMap<String, Object> parameters = new HashMap<String, Object>();
-					    parameters.put("probability", 1.0/problem.getNumberOfVariables()) ;
-					    parameters.put("distributionIndex", 20.0) ;
-					                        
-
-					    algorithm.addOperator("mutation", MutationFactory.getMutationOperator("PolynomialMutation", parameters));
-					    
-					    //Back to normal
-					    
-					    problem.setTempOut(outdir);
+						psosearch.setPopulationSize(ts.settings.search.particles);
 						
-						algorithm.execute();
-						plateau = problem.getPlateau();
+						psosearch.setQCapacity(1000);
+						
+						psosearch.execute();
+						
+						plateau = psosearch.getPlateau();
 						
 					} else {
 						//Genetic algorithm
