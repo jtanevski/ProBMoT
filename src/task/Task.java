@@ -32,7 +32,6 @@ import org.xml.sax.*;
 
 import search.*;
 import search.heuristic.TwoLevelBeamSearchProblem;
-import search.heuristic.TwoLevelPSOSearchProblem;
 import search.heuristic.TwoLevelSearchProblem;
 import search.heuristic.TwoLevelpPSOSearchProblem;
 import search.heuristic.RandomSearchProblem;

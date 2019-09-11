@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<task xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="schemas/schema1.xsd">
+	<library>pbl/KasuAquaticEcosystem.pbl</library>
+	<incomplete>pbm/KasuIncomplete.pbm</incomplete>
+
+	<data>
+		<d separator=" " id="1">data/kasutruth.data</d>
+	</data>
+
+	<mappings>
+		<dimensions>
+			<dim name="time" col="date" />
+		</dimensions>
+		
+		<exogenous>
+			
+			
+			<exo name="KasuIncomplete.phosphorus.conc" col="ortp" />
+			<exo name="KasuIncomplete.silica.conc" col="silica" />
+			<exo name="KasuIncomplete.nitrogen.conc" col="no3" />
+			<exo name="KasuIncomplete.env.temperature" col="temp" />
+			<exo name="KasuIncomplete.env.light" col="light" />
+		</exogenous>
+		
+		<endogenous>
+			
+			<endo name="KasuIncomplete.phyto.conc" col="phyto" />
+			
+		</endogenous>
+		
+		<outputs>
+			<out name="phyto" col="phyto" />
+		</outputs>
+	</mappings>
+	
+	<output>
+		<constants>
+		</constants>
+	
+		<variables>
+			<var name="phyto">KasuIncomplete.phyto.conc</var>
+		</variables>
+	</output>
+	
+	<command>heuristic_search</command>
+	
+	<settings>
+
+		<search>
+			<level>2p</level>
+			<regularization>none</regularization>
+			<lambda>1</lambda>
+			<threads>24</threads>
+			<particles>40</particles>
+			<maxevaluations>10000</maxevaluations>
+			<plateau>0.1</plateau>
+		</search>
+
+		<fitter method="DE">
+			<evaluations>5000</evaluations>
+			<population>100</population>
+			<strategy>rand/1/bin</strategy>
+			<F>0.8</F>
+			<Cr>0.9</Cr>
+			<objectives>
+				<obj>RMSEMultiDataset</obj>
+			</objectives>
+			 <seed>5</seed>
+ 		</fitter>
+		
+  		<simulator method="CVODE">
+        	<abstol>1.0E-6</abstol>
+        	<reltol>1.0E-3</reltol>
+         	<steps>1000</steps>
+        </simulator>
+
+	</settings>
+	
+	<writeDir>out/kasu88_pso_200/</writeDir>
+</task>
